@@ -1,4 +1,4 @@
-# mori
+# mori - Material Orientation Library in Rust
 An orientation library built around commonly used orientation representations used in crystallography and engineering applications. It contains conversion, rotation, and data analysis operations for various orientation spaces.
 
 Orientations play a large role in a number of fields ranging from: crystallography, x-ray diffraction, metallurgy, solid mechanics, and the list can go on and on. Therefore, it's important to have a library that easily allows conversions from Eulearian representations to rotation matrices to neo-eulerian representation to quaternions. The initial scope of this library will provide common sets of conversions. In an attempt to have a consistent set of conversions with others in the field, a majority of these conversions have been taken from <sup name="a1">[1](#f1)</sup> Later as it develops the plan is to include the following:
