@@ -33,7 +33,7 @@ impl AngAxis{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
-        ori.slice_mut(s![3, ..]).mapv_inplace(|_x| 1.0_f64);
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))) in {angaxis[3] = 1.0_f64});
 
         AngAxis{
             ori,
@@ -68,33 +68,27 @@ impl AngAxis{
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        //The cosines and sines of the function
-        let mut c:f64;
-        let mut s:f64;
+        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            let c = angaxis[3].cos();
+            let s = angaxis[3].sin();
 
-        for i in 0..nelems{
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
 
-            c = f64::cos(self.ori[(3, i)]);
-            s = f64::sin(self.ori[(3, i)]);
+            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
 
-            ori[(0, 0, i)] = c + (1.0_f64 - c) * (self.ori[(0, i)] * self.ori[(0, i)]);
-            ori[(1, 0, i)] = (1.0_f64 - c) * (self.ori[(0, i)] * self.ori[(1, i)]) + s * self.ori[(2, i)];
-            ori[(2, 0, i)] = (1.0_f64 - c) * (self.ori[(0, i)] * self.ori[(2, i)]) - s * self.ori[(1, i)];
-
-            ori[(0, 1, i)] = (1.0_f64 - c) * (self.ori[(0, i)] * self.ori[(1, i)]) - s * self.ori[(2, i)];
-            ori[(1, 1, i)] = c + (1.0_f64 - c) * (self.ori[(1, i)] * self.ori[(1, i)]);
-            ori[(2, 1, i)] = (1.0_f64 - c) * (self.ori[(1, i)] * self.ori[(2, i)]) + s * self.ori[(0, i)];
-
-            ori[(0, 2, i)] = (1.0_f64 - c) * (self.ori[(0, i)] * self.ori[(2, i)]) + s * self.ori[(1, i)];
-            ori[(1, 2, i)] = (1.0_f64 - c) * (self.ori[(1, i)] * self.ori[(2, i)]) - s * self.ori[(0, i)];
-            ori[(2, 2, i)] = c + (1.0_f64 - c) * (self.ori[(2, i)] * self.ori[(2, i)]);
-
-        }
+            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+        });
 
         RMat{
             ori,
         }
-    }//End of to_RMat
+    }//End of to_rmat
 
     //Converts the angle axis representation over to Bunge angles which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
@@ -103,9 +97,9 @@ impl AngAxis{
         //When a pure conversion doesn't exist we just use the already existing ones in other orientation
         //representations 
         rmat.to_bunge()
-    }
+    }//End of to_bunge
 
-    //This should be fixed to return a clone of self
+    //Returns a clone of the angle axis structure
     pub fn to_ang_axis(&self) -> AngAxis{
         self.clone()
     }
@@ -121,11 +115,11 @@ impl AngAxis{
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        for i in 0 .. nelems{
-            ori[(0, i)] = self.ori[(0, i)] * self.ori[(3, i)];
-            ori[(1, i)] = self.ori[(1, i)] * self.ori[(3, i)];
-            ori[(2, i)] = self.ori[(2, i)] * self.ori[(3, i)];
-        }
+        azip!(mut angaxis_comp (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            angaxis_comp[0] = angaxis[0] * angaxis[3];
+            angaxis_comp[1] = angaxis[1] * angaxis[3];
+            angaxis_comp[2] = angaxis[2] * angaxis[3];
+        });
 
         AngAxisComp{
             ori,
@@ -145,13 +139,12 @@ impl AngAxis{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-
-        for i in 0 .. nelems{
-            ori[(0, i)] = self.ori[(0, i)];
-            ori[(1, i)] = self.ori[(1, i)];
-            ori[(2, i)] = self.ori[(2, i)];
-            ori[(3, i)] = f64::tan(inv2 * self.ori[(3, i)]);
-        }
+        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            rodvec[0] = angaxis[0];
+            rodvec[1] = angaxis[1];
+            rodvec[2] = angaxis[2];
+            rodvec[3] = f64::tan(inv2 * angaxis[3]);
+        });
 
         RodVec{
             ori,
@@ -168,7 +161,6 @@ impl AngAxis{
         //code in a helper function that isn't seen.
         let rod_vec = self.to_rod_vec();
         rod_vec.to_rod_vec_comp()
-
     }//End of to_rod_vec_comp
 
     //Converts the angle axis representation over to a unit quaternion representation which has the following properties
@@ -180,18 +172,15 @@ impl AngAxis{
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
         let inv2 = 1.0_f64 / 2.0_f64;
-        let mut s:f64;
 
-        for i in 0..nelems{
+        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            let s = f64::sin(inv2 * angaxis[3]); 
 
-            s = f64::sin(inv2 * self.ori[(3, i)]); 
-
-            ori[(0, i)] = f64::cos(inv2 * self.ori[(3, i)]);
-            ori[(1, i)] = s * self.ori[(0, i)];
-            ori[(2, i)] = s * self.ori[(1, i)];
-            ori[(3, i)] = s * self.ori[(2, i)];
-
-        }
+            quat[0] = f64::cos(inv2 * angaxis[3]);
+            quat[1] = s * angaxis[0];
+            quat[2] = s * angaxis[1];
+            quat[3] = s * angaxis[2];
+        });
 
         Quat{
             ori,
@@ -208,22 +197,19 @@ impl AngAxis{
 
         let inv3  = 1.0_f64 / 3.0_f64;
         let inv34 = 3.0_f64 / 4.0_f64;
-        //Inner calculation used in the power term 
-        let mut pow_term:f64;
 
-        for i in 0 .. nelems{
+        azip!(mut homoch (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            let pow_term    = inv34 * (angaxis[3] - angaxis[3].sin()); 
 
-            pow_term    = inv34 * (self.ori[(3, i)] - f64::sin(self.ori[(3, i)])); 
-
-            ori[(0, i)] = self.ori[(0, i)];
-            ori[(1, i)] = self.ori[(1, i)];
-            ori[(2, i)] = self.ori[(2, i)];
-            ori[(3, i)] = pow_term.powf(inv3);
-        }
+            homoch[0] = angaxis[0];
+            homoch[1] = angaxis[1];
+            homoch[2] = angaxis[2];
+            homoch[3] = pow_term.powf(inv3);
+        });
 
         Homochoric{
             ori,
         }
-    }
+    }//End of to_homochoric
 }//End of Impl AngAxis
 

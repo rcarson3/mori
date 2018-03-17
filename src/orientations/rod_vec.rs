@@ -35,14 +35,14 @@ impl RodVec{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
-        ori.slice_mut(s![3, ..]).mapv_inplace(|_x| 1.0_f64);
+        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))) in {rodvec[3] = 1.0_f64});
 
         RodVec{
             ori,
         }
     }//End of new
 
-    //Creates an rodrigues vector parameterization  type with the supplied data as long as the supplied data is in the following format
+    //Creates a rodrigues vector parameterization  type with the supplied data as long as the supplied data is in the following format
     //shape (4, nelems), memory order = fortran/column major.
     //If it doesn't fit those standards it will fail.
     pub fn new_init(ori: Array2<f64>) -> RodVec{
@@ -68,18 +68,17 @@ impl RodVec{
         let rmat = self.to_rmat();
         //When a pure conversion doesn't exist we just use the already existing ones in other orientation
         //representations 
-        rmat.to_bunge()
-        
-    }
+        rmat.to_bunge()   
+    }//End of to_bunge
 
 
     //Converts the rodrigues vector representation over to a rotation matrix which has the following properties
     //shape (3, 3, nelems), memory order = fortran/column major.
     pub fn to_rmat(&self) -> RMat{
         let ang_axis = self.to_ang_axis();
+        //We could convert this to a pure converesion if we wanted to save on memory usage later on
         ang_axis.to_rmat()
-    }
-
+    }//End of to_rmat
 
     //Converts the rodrigues vector representation over to axis-angle representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
@@ -89,29 +88,29 @@ impl RodVec{
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        for i in 0 .. nelems{
-            ori[(0, i)] = self.ori[(0, i)];
-            ori[(1, i)] = self.ori[(1, i)];
-            ori[(2, i)] = self.ori[(2, i)];
-            ori[(3, i)] = 2.0_f64 * f64::atan(self.ori[(3, i)]);
-        }
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+            angaxis[0] = rodvec[0];
+            angaxis[1] = rodvec[1];
+            angaxis[2] = rodvec[2];
+            angaxis[3] = 2.0_f64 * rodvec[3].atan();
+        });
 
         AngAxis{
             ori,
         }
-    }
+    }//End of to_ang_axis
 
     //Converts the rodrigues vector representation over to a compact axial vector representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
     pub fn to_ang_axis_comp(&self) -> AngAxisComp{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_ang_axis_comp()
-    }
+    }//End of to_ang_axis_comp
 
     //It returns a clone of itself.
     pub fn to_rod_vec(&self) -> RodVec{
         self.clone()
-    }
+    }//End of to_rod_vec
 
     //Converts the rodrigues vector representation over to a compact rodrigues which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
@@ -126,16 +125,16 @@ impl RodVec{
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        for i in 0 .. nelems{
-            ori[(0, i)] = self.ori[(0, i)] * self.ori[(3, i)];
-            ori[(1, i)] = self.ori[(1, i)] * self.ori[(3, i)];
-            ori[(2, i)] = self.ori[(2, i)] * self.ori[(3, i)];
-        }
+        azip!(mut rodvec_comp (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+            rodvec_comp[0] = rodvec[0] * rodvec[3];
+            rodvec_comp[1] = rodvec[1] * rodvec[3];
+            rodvec_comp[2] = rodvec[2] * rodvec[3];
+        });
 
         RodVecComp{
             ori,
         }
-    }
+    }//End of to_rod_vec_comp
 
     //Converts the rodrigues vector representation over to a unit quaternion which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
@@ -143,12 +142,12 @@ impl RodVec{
         //Will replace this with a more direct conversion later on
         let ang_axis = self.to_ang_axis();
         ang_axis.to_quat()
-    }
+    }//End of to_quat
 
     pub fn to_homochoric(&self) -> Homochoric{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
-    }
+    }//End of to_homochoric
 }//End of impl of Rodrigues Vector
 
 

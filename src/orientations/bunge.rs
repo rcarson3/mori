@@ -66,28 +66,26 @@ impl Bunge{
         
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        //Individual cosines for each Bunge angle
-        //Defining the types here so that the collect down below knows exactly what type they should be
-        let mut cs:Array1<f64>;
-        let mut ss:Array1<f64>;
+        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref bunge (self.ori.axis_iter(Axis(1))) in {
+            let s1 = bunge[0].sin();
+            let c1 = bunge[0].cos();
+            let s2 = bunge[1].sin();
+            let c2 = bunge[1].cos();
+            let s3 = bunge[2].sin();
+            let c3 = bunge[2].cos();
 
-        for i in 0..nelems{
-            //Collecting the cosines and sines for a single Bunge angle
-            cs = self.ori.slice(s![.., i]).iter().map(|&x| f64::cos(x)).collect();
-            ss = self.ori.slice(s![.., i]).iter().map(|&x| f64::sin(x)).collect();
+            rmat[[0, 0]] = c1 * c3 - s1 * s3 * c2;
+            rmat[[0, 1]] = -c1 * s3 - s1 * c2 * c3;
+            rmat[[0, 2]] = s1 * s2;
 
-            ori[(0, 0, i)] = cs[0] * cs[2] - ss[0] * ss[2] * cs[1];
-            ori[(0, 1, i)] = -cs[0] * ss[2] - ss[0] * cs[1] * cs[2];
-            ori[(0, 2, i)] = ss[0] * ss[1];
+            rmat[[1, 0]] = s1 * c3 + c1 * c2 * s3;
+            rmat[[1, 1]] = -s1 * s3 + c1 * c2 * c3;
+            rmat[[1, 2]] = -c1 * s2;
 
-            ori[(1, 0, i)] = ss[0] * cs[2] + cs[0] * cs[1] * ss[2];
-            ori[(1, 1, i)] = -ss[0] * ss[2] + cs[0] * cs[1] * cs[2];
-            ori[(1, 2, i)] = -cs[0] * ss[1];
-
-            ori[(2, 0, i)] = ss[1] * ss[2];
-            ori[(2, 1, i)] = ss[1] * cs[2];
-            ori[(2, 2, i)] = cs[1];
-        }
+            rmat[[2, 0]] = s2 * s3;
+            rmat[[2, 1]] = s2 * c3;
+            rmat[[2, 2]] = c2;
+        });
 
         RMat{
             ori,
@@ -102,28 +100,18 @@ impl Bunge{
         
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        //Going ahead and defining the types for these loop variables
-        //This should help and ensure that they are what types we expect them to be
-        //down below even though the compiler should be able to infer them correctly.
-        let mut t:f64;
-        let mut sigma:f64;
-        let mut delta:f64;
-        let mut tau:f64;
-        let mut alpha:f64;
-        let mut itau:f64;
-        let mut p:f64;
-        //This is a constant factor used in the loop.
         let inv2 = 1.0_f64/2.0_f64;
 
-
-        for i in 0..nelems{
-
-            t       = f64::tan(self.ori[(1, i)]/2.0_f64);
-            sigma   = inv2 * (self.ori[(0, i)] + self.ori[(2, i)]);
-            delta   = inv2 * (self.ori[(0, i)] - self.ori[(2, i)]);
-            tau     = f64::sqrt(t * t + f64::sin(sigma) * f64::sin(sigma));
-            alpha   = 2.0_f64 * f64::atan(tau / (f64::cos(sigma)));
-            itau = 1.0_f64/tau;
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref bunge (self.ori.axis_iter(Axis(1))) in {
+            let t       = f64::tan(bunge[1] * inv2);
+            let sigma   = inv2 * (bunge[0] + bunge[2]);
+            let csigma  = sigma.cos();
+            let ssigma  = sigma.sin();
+            let delta   = inv2 * (bunge[0] - bunge[2]);
+            let tau     = f64::sqrt(t * t + ssigma * ssigma);
+            let mut alpha   = 2.0_f64 * f64::atan(tau / csigma);
+            let itau = 1.0_f64 / tau;
+            let mut p:f64;
 
             //If alpha is greater than pi we need to set p equal to 1 and
             //set alpha equal to 2*pi - alpha. If it isn't then p is set
@@ -135,11 +123,11 @@ impl Bunge{
                 p = -1.0_f64;
             }
 
-            ori[(0, i)] = p * itau * t * f64::cos(delta);
-            ori[(1, i)] = p * itau * t * f64::sin(delta);
-            ori[(2, i)] = p * itau * t * f64::cos(sigma);
-            ori[(3, i)] = alpha;
-        }
+            angaxis[0] = p * itau * t * delta.cos();
+            angaxis[1] = p * itau * t * delta.sin();
+            angaxis[2] = p * itau * t * csigma;
+            angaxis[3] = alpha;
+        });
 
         AngAxis{
             ori,
@@ -183,37 +171,23 @@ impl Bunge{
         let nelems = self.ori.len_of(Axis(1));
         
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
-
-        //Going ahead and defining the types for these loop variables
-        //This should help and ensure that they are what types we expect them to be
-        //down below even though the compiler should be able to infer them correctly.
-        let mut sigma:f64;
-        let mut delta:f64;
-        let mut c:f64;
-        let mut s:f64;
-        let mut q0:f64;
-        let mut p:f64;
+        
         //This is a constant factor used in the loop.
         let inv2 = 1.0_f64/2.0_f64;
 
-        for i in 0..nelems{
-            sigma   = inv2 * (self.ori[(0, i)] + self.ori[(2, i)]);
-            delta   = inv2 * (self.ori[(0, i)] - self.ori[(2, i)]);
-            c       = f64::cos(inv2 * self.ori[(1, i)]);
-            s       = f64::sin(inv2 * self.ori[(1, i)]);
-            q0      = c * f64::cos(sigma);
+        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref bunge (self.ori.axis_iter(Axis(1))) in {
+            let sigma   = inv2 * (bunge[0] + bunge[2]);
+            let delta   = inv2 * (bunge[0] - bunge[2]);
+            let c       = f64::cos(inv2 * bunge[1]);
+            let s       = f64::sin(inv2 * bunge[1]);
+            let q0      = c * sigma.cos();
+            let p       = if q0 < 0.0_f64{-1.0_f64} else{1.0_f64};
 
-            if q0 < 0.0_f64{
-                p = -1.0_f64;
-            }else{
-                p = 1.0_f64;
-            }
-
-            ori[(0, i)] = p * q0;
-            ori[(1, i)] = -p * s * f64::cos(delta);
-            ori[(2, i)] = -p * s * f64::sin(delta);
-            ori[(3, i)] = -p * c * f64::cos(sigma);
-        }
+            quat[0] = p * q0;
+            quat[1] = -p * s * delta.cos();
+            quat[2] = -p * s * delta.sin();
+            quat[3] = -p * c * sigma.cos();
+        });
 
         Quat{
             ori,

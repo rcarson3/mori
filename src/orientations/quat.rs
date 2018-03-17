@@ -12,7 +12,7 @@ impl Quat{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
-        ori.slice_mut(s![0, ..]).mapv_inplace(|_x| 1.0_f64);
+        azip!(mut quat (ori.axis_iter_mut(Axis(1))) in {quat[0] = 1.0_f64});
 
         Quat{
             ori,
@@ -47,54 +47,40 @@ impl Quat{
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        let mut xi:f64;
-        let mut q03:f64;
-        let mut q12:f64;
-        let mut inv_xi:f64;
-
-        let mut t1:f64;
-        let mut t2:f64;
-
         let tol = std::f64::EPSILON;
 
-        for i in 0..nelems{
-
-            q03 = self.ori[(0, i)] * self.ori[(0, i)] + self.ori[(3, i)] * self.ori[(3, i)];
-            q12 = self.ori[(1, i)] * self.ori[(1, i)] + self.ori[(2, i)] * self.ori[(2, i)];
-            xi = f64::sqrt(q03 * q12);
-
-            if f64::abs(xi) < tol && f64::abs(q12) < tol {
-
-                ori[(0, i)] = f64::atan2(-2.0_f64 * self.ori[(0, i)] * self.ori[(3, i)], self.ori[(0, i)] * self.ori[(0, i)] - self.ori[(3, i)] * self.ori[(3, i)]);
+        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let q03 = quat[0] * quat[0] + quat[3] * quat[3];
+            let q12 = quat[1] * quat[1] + quat[2] * quat[2];
+            let xi = f64::sqrt(q03 * q12);
+            //We get to now go through all of the different cases that this might break down into
+            if xi.abs() < tol && q12.abs() < tol {
+                bunge[0] = f64::atan2(-2.0_f64 * quat[0] * quat[3], quat[0] * quat[0] - quat[3] * quat[3]);
                 //All of the other values are zero
-
-            }else if f64::abs(xi) < tol && f64::abs(q03) < tol{
-
-                ori[(0, i)] = f64::atan2(2.0_f64 * self.ori[(1, i)] * self.ori[(2, i)], self.ori[(1, i)] * self.ori[(1, i)] - self.ori[(2, i)] * self.ori[(2, i)]);
-                ori[(1, i)] = std::f64::consts::PI;
+            }else if xi.abs() < tol && q03.abs() < tol{
+                bunge[0] = f64::atan2(2.0_f64 * quat[1] * quat[2], quat[1] * quat[1] - quat[2] * quat[2]);
+                bunge[1] = std::f64::consts::PI;
                 //The other value is zero
-
             }else{
-
-                inv_xi      = 1.0_f64 / xi;
-                t1          = inv_xi * (self.ori[(1, i)] * self.ori[(3, i)] - self.ori[(0, i)] * self.ori[(2, i)] );
-                t2          = inv_xi * (-self.ori[(0, i)] * self.ori[(1, i)] - self.ori[(2, i)] * self.ori[(3, i)] );
-
-                ori[(0, i)] = f64::atan2(t1, t2);
-                ori[(1, i)] = f64::atan2(2.0_f64 * xi, q03 - q12);
-
-                t1          = inv_xi * (self.ori[(0, i)] * self.ori[(2, i)] - self.ori[(1, i)] * self.ori[(3, i)] );
-                t2          = inv_xi * (self.ori[(2, i)] * self.ori[(3, i)] - self.ori[(0, i)] * self.ori[(1, i)] );
-
-                ori[(2, i)] = f64::atan2(t1, t2);
-
+                let inv_xi = 1.0_f64 / xi;
+                //The atan2 terms are pretty long so we're breaking it down into a couple of temp terms
+                let t1 = inv_xi * (quat[1] * quat[3] - quat[0] * quat[2]);
+                let t2 = inv_xi * (-quat[0] * quat[1] - quat[2] * quat[3]);
+                //We can now assign the first two bunge angles
+                bunge[0] = t1.atan2(t2);
+                bunge[1] = f64::atan2(2.0_f64 * xi, q03 - q12);
+                //Once again these terms going into the atan2 term are pretty long
+                let t1 = inv_xi * (quat[0] * quat[2] - quat[1] * quat[3]);
+                let t2 = inv_xi * (quat[2] * quat[3] - quat[0] * quat[1]);
+                //We can finally find the final bunge angle
+                bunge[2] = t1.atan2(t2);
             }
-        }
+        });
 
         Bunge{
             ori,
         }
-    }//End of to_Bunge
+    }//End of to_bunge
 
     //Converts the unit quaternion representation over to rotation matrix which has the following properties
     //shape (3, 3, nelems), memory order = fortran/column major.
@@ -104,25 +90,21 @@ impl Quat{
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        let mut qbar:f64;
+        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
-        for i in 0..nelems{
+            rmat[[0, 0]] = qbar + quat[1] * quat[1];
+            rmat[[1, 0]] = 2.0_f64 * (quat[1] * quat[2] + quat[0] * quat[3]);
+            rmat[[2, 0]] = 2.0_f64 * (quat[1] * quat[3] - quat[0] * quat[2]);
 
-            qbar =  self.ori[(0, i)] * self.ori[(0, i)] - (self.ori[(1, i)] * self.ori[(1, i)] + self.ori[(2, i)] * self.ori[(2, i)] + self.ori[(3, i)] * self.ori[(3, i)]);
+            rmat[[1, 1]] = 2.0_f64 * (quat[1] * quat[2] - quat[0] * quat[3]);
+            rmat[[1, 1]] = qbar + quat[2] * quat[2];
+            rmat[[2, 1]] = 2.0_f64 * (quat[2] * quat[3] + quat[0] * quat[1]);
 
-            ori[(0, 0, i)] = qbar + self.ori[(1, i)] * self.ori[(1, i)];
-            ori[(1, 0, i)] = 2.0_f64 * (self.ori[(1, i)] * self.ori[(2, i)] + self.ori[(0, i)] * self.ori[(3, i)]);
-            ori[(2, 0, i)] = 2.0_f64 * (self.ori[(1, i)] * self.ori[(3, i)] - self.ori[(0, i)] * self.ori[(2, i)]);
-
-            ori[(1, 1, i)] = 2.0_f64 * (self.ori[(1, i)] * self.ori[(2, i)] - self.ori[(0, i)] * self.ori[(3, i)]);
-            ori[(1, 1, i)] = qbar + self.ori[(2, i)] * self.ori[(2, i)];
-            ori[(2, 1, i)] = 2.0_f64 * (self.ori[(2, i)] * self.ori[(3, i)] + self.ori[(0, i)] * self.ori[(1, i)]);
-
-            ori[(0, 2, i)] = 2.0_f64 * (self.ori[(1, i)] * self.ori[(3, i)] + self.ori[(0, i)] * self.ori[(2, i)]);
-            ori[(1, 2, i)] = 2.0_f64 * (self.ori[(2, i)] * self.ori[(3, i)] - self.ori[(0, i)] * self.ori[(1, i)]);
-            ori[(2, 2, i)] = qbar + self.ori[(3, i)] * self.ori[(3, i)];
-
-        }
+            rmat[[0, 2]] = 2.0_f64 * (quat[1] * quat[3] + quat[0] * quat[2]);
+            rmat[[1, 2]] = 2.0_f64 * (quat[2] * quat[3] - quat[0] * quat[1]);
+            rmat[[2, 2]] = qbar + quat[3] * quat[3];
+        });
 
         RMat{
             ori,
@@ -138,38 +120,29 @@ impl Quat{
         let mut ori = Array2::<f64>::zeros((4, nelems));
 
         let tol = std::f64::EPSILON;
-        let mut inv_t:f64;
-        let mut s:f64;
-        let mut phi:f64;
 
-        for i in 0..nelems{
-
-            if f64::abs(self.ori[(0, i)]) < tol{
-
-                ori[(0, i)] = self.ori[(1, i)];
-                ori[(1, i)] = self.ori[(2, i)];
-                ori[(2, i)] = self.ori[(3, i)];
-                ori[(3, i)] = std::f64::consts::PI;
-
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            if quat[0].abs() < tol{
+                angaxis[0] = quat[1];
+                angaxis[1] = quat[2];
+                angaxis[2] = quat[3];
+                angaxis[3] = std::f64::consts::PI;
             }else{
+                //This is our angle of rotation
+                let phi = 2.0_f64 * quat[0].acos();
+                let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
-                phi = 2.0_f64 * f64::acos(self.ori[(0, i)]);
-
-                inv_t = f64::sqrt(self.ori[(1, i)] * self.ori[(1, i)] + self.ori[(2, i)] * self.ori[(2, i)] + self.ori[(3, i)] * self.ori[(3, i)]);
-                s   = self.ori[(0, i)].signum() / inv_t;
-
-                ori[(0, i)] = s * self.ori[(1, i)];
-                ori[(1, i)] = s * self.ori[(2, i)];
-                ori[(2, i)] = s * self.ori[(3, i)];
-                ori[(3, i)] = phi;
-
+                angaxis[0] = s * quat[1];
+                angaxis[1] = s * quat[2];
+                angaxis[2] = s * quat[3];
+                angaxis[3] = phi;
             }
-        }
+        });
 
         AngAxis{
             ori,
         }
-    }
+    }//End of to_ang_axis
 
     //Converts the unit quaternion over to a compact angle-axis representation which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
@@ -194,22 +167,17 @@ impl Quat{
     pub fn to_rod_vec_comp(&self) -> RodVecComp{
         //We first convert to a rodrigues vector representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our angle axis vector.
-        //If we want to be more efficient about this in the future with out as many copies used we can reuse a lot of the code
-        //used in the to_ang_axis code. However, we will end up with a lot of similar/repeated code then. We could put that
-        //code in a helper function that isn't seen.
         let rod_vec = self.to_rod_vec();
         rod_vec.to_rod_vec_comp()
     }//End of to_rod_vec_comp
 
-    //This returns a clone of itself
+    //This returns a clone of the original Quaternion structure
     pub fn to_quat(&self) -> Quat{
         self.clone()
-    }
+    }//End of to_quat
 
     pub fn to_homochoric(&self) -> Homochoric{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
-    }
-
-
+    }//End of to_homochoric
 }//End of impl of unit Quaternion
