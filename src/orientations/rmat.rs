@@ -17,7 +17,7 @@ use super::*;
 
 #[derive(Clone, Debug)]
 pub struct RMat{
-    pub ori: Array3<f64>,
+    ori: Array3<f64>,
 } 
 
 
@@ -59,11 +59,24 @@ impl RMat{
         }
     }//End of new_init
 
-    pub fn to_bunge(&self) -> Bunge{
+    //Return a view of ori
+    pub fn ori_view(&self) -> ArrayView3<f64>{
+        self.ori.view()
+    }
+
+    //Return a mutable view of ori
+    pub fn ori_view_mut(&mut self) -> ArrayViewMut3<f64>{
+        self.ori.view_mut()
+    }
+}//End of RMat impl
+
+impl OriConv for RMat{
+
+    fn to_bunge(&self) -> Bunge{
         
         let nelems = self.ori.len_of(Axis(2));
 
-        let mut ori = Array2::<f64>::zeros((3, nelems));
+        let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
         //We need to check the R_33 component to see if it's near 1.0 
         let tol = std::f64::EPSILON;
@@ -81,23 +94,21 @@ impl RMat{
             }
         });
 
-        Bunge{
-            ori,
-        }
+        Bunge::new_init(ori)
     }//End of to_bunge
 
     //If to_rmat is called it just returns self
-    pub fn to_rmat(&self) -> RMat{
+    fn to_rmat(&self) -> RMat{
         self.clone()
     }//End of to_rmat
 
     //Converts the rotation matrix over to an angle-axis representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
-    pub fn to_ang_axis(&self) -> AngAxis{
+    fn to_ang_axis(&self) -> AngAxis{
 
         let nelems = self.ori.len_of(Axis(2));
 
-        let mut ori = Array2::<f64>::zeros((4, nelems));
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
         let inv2 = 1.0_f64/2.0_f64;
 
@@ -122,14 +133,12 @@ impl RMat{
             }
         });
 
-        AngAxis{
-            ori,
-        }
+        AngAxis::new_init(ori)
     }//End of to_ang_axis
 
     //Converts the rotation matrix over to a compact angle-axis representation which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
-    pub fn to_ang_axis_comp(&self) -> AngAxisComp{
+    fn to_ang_axis_comp(&self) -> AngAxisComp{
         //We first convert to a angle axis representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our angle axis vector.
         let ang_axis = self.to_ang_axis();
@@ -138,7 +147,7 @@ impl RMat{
 
     //Converts the rotation matrix over to a rodrigues vector representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
-    pub fn to_rod_vec(&self) -> RodVec{
+    fn to_rod_vec(&self) -> RodVec{
         //We first convert to a angle axis representation. Then we just need to change the last component
         //of our angle axis representation to be tan(phi/2) instead of phi
         let ang_axis = self.to_ang_axis();
@@ -147,7 +156,7 @@ impl RMat{
 
     //Converts the rotation matrix over to a compact rodrigues vector representation which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
-    pub fn to_rod_vec_comp(&self) -> RodVecComp{
+    fn to_rod_vec_comp(&self) -> RodVecComp{
         //We first convert to a rodrigues vector representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our angle axis vector.
         //If we want to be more efficient about this in the future with out as many copies used we can reuse a lot of the code
@@ -159,11 +168,11 @@ impl RMat{
 
     //Converts the rotation matrix over to a unit quaternion representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
-    pub fn to_quat(&self) -> Quat{
+    fn to_quat(&self) -> Quat{
 
         let nelems = self.ori.len_of(Axis(2));
 
-        let mut ori = Array2::<f64>::zeros((4, nelems));
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
         let inv2 = 1.0_f64/2.0_f64;
 
@@ -193,8 +202,296 @@ impl RMat{
             quat[3] = q3 * inv_norm;
         });
 
-        Quat{
-            ori,
-        }
+        Quat::new_init(ori)
     }//End of to_quat
-}//End of Impl RMat
+
+    //Converts the rotation matrix representation over to a homochoric representation which has the following properties
+    //shape (4, nelems), memory order = fortran/column major.
+    fn to_homochoric(&self) -> Homochoric{
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_homochoric()
+    }//End of to_homochoric
+}//End of Impl Ori_Conv for RMat
+
+
+impl RotVector for RMat{
+
+    //rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
+    //given rotation matrices. The newly rotated vectors are then returned. This function requires the
+    //number of elements in the rotation matrix to be either 1 or nelems where vec has nelems in it.
+    //If this condition is not met the function will error out.
+    //vec - the vector to be rotated must have dimensions 3xnelems.
+    //Output - the rotated vector and has dimensions 3xnelems.
+    fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
+
+        let nelems = vec.len_of(Axis(1));
+        let rnelems = self.ori.len_of(Axis(2));
+
+        let rows  = vec.len_of(Axis(0));
+        assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
+
+        assert!( (nelems == rnelems) | (rnelems == 1), 
+        "The number of elements in the vector field must be equal to the number of elements in the
+        Rotation Matix structure, or their must only be one element in Rotation Matrix. There are
+        currently {} elements in vector and {} elements in Rotation Matrix",
+        nelems, rnelems);
+
+        let mut rvec = Array2::<f64>::zeros((3, nelems).f());
+
+        //We need to see if we have more than one rotation matrix that we're multiplying by
+        if rnelems == nelems {
+            //Here we're iterating through each vector, rotation matrix, and rotated vector value
+            //and assigning R*v to the rotated vector.
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            ref rmat (self.ori.axis_iter(Axis(2))) in {
+                rvec.assign({&rmat.dot(&vec)});
+            });
+        } else{
+            //We just have one rmat so we can multiple that by our vec and get all of our
+            //rvec values all at once.
+            //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
+            //to use the dot function
+            rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
+        }
+
+        //Now we just need to return the rvec value
+        rvec
+    }//End of rot_vector
+
+    //rot_vector_mut takes in a 2D array view of a series of vectors and a mutable 2D ArrayView of the 
+    //rotated vector. It then rotates these vectors using the given rotation matrices. The newly rotated
+    // vectors are assigned to the supplied rotated vector, rvec. This function requires the
+    //number of elements in the rotation matrix to be either 1 or nelems where vec has nelems in it.
+    //It also requires the number of elements in rvec and vec to be equal.
+    //If these conditions are not met the function will error out.
+    //vec - the vector to be rotated must have dimensions 3xnelems.
+    //rvec - the rotated vector and has dimensions 3xnelems.
+    fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
+
+        let nelems = vec.len_of(Axis(1));
+        let rvnelems = rvec.len_of(Axis(1));
+        let rnelems = self.ori.len_of(Axis(2));
+
+        let rows  = vec.len_of(Axis(0));
+        assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
+
+        assert!((nelems == rvnelems),
+        "The number of elements in the unrotated vector field must be equal to the number of elements
+        in the supplied rotated vector field. There are currently {} elements in the unrotated vector
+        field and {} elements in the rotated vector field", 
+        nelems, rvnelems);
+
+        assert!( (nelems == rnelems) | (rnelems == 1), 
+        "The number of elements in the vector field must be equal to the number of elements in the
+        Rotation Matix structure, or their must only be one element in Rotation Matrix. There are
+        currently {} elements in vector and {} elements in Rotation Matrix",
+        nelems, rnelems);
+
+        //We need to see if we have more than one rotation matrix that we're multiplying by
+        if rnelems == nelems {
+            //Here we're iterating through each vector, rotation matrix, and rotated vector value
+            //and assigning R*v to the rotated vector.
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            ref rmat (self.ori.axis_iter(Axis(2))) in {
+                rvec.assign({&rmat.dot(&vec)});
+            });
+        } else{
+            //We just have one rmat so we can multiple that by our vec and get all of our
+            //rvec values all at once.
+            //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
+            //to use the dot function
+            rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
+        }
+    }//End of rot_vector_mut
+
+    //rot_vector_inplace takes in a mutable 2D array view of a series of vectors. It then rotates these vectors using the
+    //given rotation matrices. The newly rotated vectors are assigned to original vector. This function requires the
+    //number of elements in the rotation matrix to be either 1 or nelems where vec has nelems in it.
+    //If this condition is not met the function will error out.
+    //vec - the vector to be rotated must have dimensions 3xnelems.
+    fn rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
+
+        let nelems = vec.len_of(Axis(1));
+        let rnelems = self.ori.len_of(Axis(2));
+
+        let rows  = vec.len_of(Axis(0));
+        assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
+
+        assert!( (nelems == rnelems) | (rnelems == 1), 
+        "The number of elements in the vector field must be equal to the number of elements in the
+        Rotation Matix structure, or their must only be one element in Rotation Matrix. There are
+        currently {} elements in vector and {} elements in Rotation Matrix",
+        nelems, rnelems);
+
+        //We need to see if we have more than one rotation matrix that we're multiplying by
+        if rnelems == nelems {
+            //Here we're iterating through each vector, rotation matrix, and rotated vector value
+            //and assigning R*v to the vector.
+            azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+                //A cleaner way needs to exists to perform this operation.
+                let mut rvec = Array2::<f64>::zeros((3, 1).f());
+                rvec.assign({&rmat.dot(&vec)});
+                vec.assign({&rvec});
+            });
+        } else{
+            //We just have one rmat so we can multiple that by our vec and get all of our
+            //rvec values all at once.
+            //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
+            //to use the dot function
+            azip!(mut vec (vec.axis_iter_mut(Axis(1))) in{
+                //A cleaner way needs to exists to perform this operation.
+                let mut rvec = Array2::<f64>::zeros((3, 1).f());
+                rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
+                vec.assign({&rvec});
+            });
+        }
+    }//End of rot_vector_inplace
+}//Endo of Impl RotVector
+
+impl RotTensor for RMat{
+
+    //rot_tensor takes in a 3D array view of a series of tensors. It then rotates these tensors using the
+    //given rotation matrices. The newly rotated tensors are then returned. This function requires the
+    //number of elements in the rotation matrix to be either 1 or nelems where tensor has nelems in it.
+    //If this condition is not met the function will error out.
+    //tensor - the tensors to be rotated must have dimensions 3x3xnelems.
+    //Output - the rotated tensors and has dimensions 3x3xnelems.
+    fn rot_tensor(&self, tensor: ArrayView3<f64>) -> Array3<f64>{
+
+        let nelems  = tensor.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(2));
+        let rows    = tensor.len_of(Axis(0));
+        let cols    = tensor.len_of(Axis(1));
+
+        assert!((cols == 3) & (rows == 3), 
+        "The number of columns and rows must be 3. The number of rows and cols provided is {}
+        and {} respectively", rows, cols); 
+
+        assert!( (nelems == rnelems) | (rnelems == 1), 
+        "The number of elements in the tensor field must be equal to the number of elements in the
+        Rotation Matix structure, or their must only be one element in Rotation Matrix. There are
+        currently {} elements in tensor and {} elements in Rotation Matrix",
+        nelems, rnelems);
+
+        let mut rtensor = Array3::<f64>::zeros((3, 3, nelems).f());
+
+        //We need to see if we have more than one rotation matrix that we're multiplying by
+        if rnelems == nelems {
+            //Here we're iterating through each tensor, rotation matrix, and rotated tensor value
+            //and assigning R*T*R^T to the rotated tensor.
+            azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))), 
+            ref rmat (self.ori.axis_iter(Axis(2))) in {
+                rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
+            });
+        } else{
+            //We just have one rmat so we can multiple that by our tensors.
+            //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
+            //to use the dot function
+            azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))) in {
+            rtensor.assign({
+                &self.ori.subview(Axis(2), 0).dot(&tensor.dot(&self.ori.subview(Axis(2), 0).t()))
+                });
+            });
+        }
+
+        //Now we just need to return the rtensor value
+        rtensor
+    }//End of rot_tensor
+
+    //rot_tensor_mut takes in a 3D array view of a series of tensors and a mutable 3D ArrayView of the 
+    //rotated tensors. It then rotates these tensors using the given rotation matrices. The newly rotated
+    //tensors are assigned to the supplied rotated tensors, rtensor. This function requires the
+    //number of elements in the rotation matrix to be either 1 or nelems where tensor has nelems in it.
+    //It also requires the number of elements in rtensor and tensor to be equal.
+    //tensor  - the tensors to be rotated must have dimensions 3x3xnelems.
+    //rtensor - the rotated tensors and has dimensions 3x3xnelems.
+    fn rot_tensor_mut(&self, tensor: ArrayView3<f64>, mut rtensor: ArrayViewMut3<f64>) {
+
+        let nelems  = tensor.len_of(Axis(2));
+        let rtnelems  = rtensor.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(2));
+        let rows    = tensor.len_of(Axis(0));
+        let cols    = tensor.len_of(Axis(1));
+
+        assert!((cols == 3) & (rows == 3), 
+        "The number of columns and rows must be 3. The number of rows and cols provided is {}
+        and {} respectively", rows, cols); 
+
+        assert!((nelems == rtnelems),
+        "The number of elements in the unrotated tensor field must be equal to the number of elements
+        in the supplied rotated tensor field. There are currently {} elements in the unrotated tensor
+        field and {} elements in the rotated tensor field", 
+        nelems, rtnelems);
+
+        assert!( (nelems == rnelems) | (rnelems == 1), 
+        "The number of elements in the tensor field must be equal to the number of elements in the
+        Rotation Matix structure, or their must only be one element in Rotation Matrix. There are
+        currently {} elements in tensor and {} elements in Rotation Matrix",
+        nelems, rnelems);
+
+        //We need to see if we have more than one rotation matrix that we're multiplying by
+        if rnelems == nelems {
+            //Here we're iterating through each tensor, rotation matrix, and rotated tensor value
+            //and assigning R*T*R^T to the rotated tensor.
+            azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))), 
+            ref rmat (self.ori.axis_iter(Axis(2))) in {
+                rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
+            });
+        } else{
+            //We just have one rmat so we can multiple that by our tensors.
+            //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
+            //to use the dot function
+            azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))) in {
+                rtensor.assign({
+                    &self.ori.subview(Axis(2), 0).dot(&tensor.dot(&self.ori.subview(Axis(2), 0).t()))
+                    });
+            });
+        }
+    }//End of rot_tensor_mut
+
+    //rot_tensor_inplace takes in a mutable 3D array view of a series of tensors. 
+    //It then rotates these tensors using the given rotation matrices. The newly rotated
+    //tensors are assigned in place of the supplied variable tensor. This function requires the
+    //number of elements in the rotation matrix to be either 1 or nelems where tensor has nelems in it.
+    //tensor - the tensors to be rotated must have dimensions 3x3xnelems.
+    fn rot_tensor_inplace(&self, mut tensor: ArrayViewMut3<f64>) {
+
+        let nelems  = tensor.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(2));
+        let rows    = tensor.len_of(Axis(0));
+        let cols    = tensor.len_of(Axis(1));
+
+        assert!((cols == 3) & (rows == 3), 
+        "The number of columns and rows must be 3. The number of rows and cols provided is {}
+        and {} respectively", rows, cols); 
+
+        assert!( (nelems == rnelems) | (rnelems == 1), 
+        "The number of elements in the tensor field must be equal to the number of elements in the
+        Rotation Matix structure, or their must only be one element in Rotation Matrix. There are
+        currently {} elements in tensor and {} elements in Rotation Matrix",
+        nelems, rnelems);
+
+        //We need to see if we have more than one rotation matrix that we're multiplying by
+        if rnelems == nelems {
+            //Here we're iterating through each tensor, rotation matrix, and rotated tensor value
+            //and assigning R*T*R^T to the rotated tensor.
+            azip!(mut tensor (tensor.axis_iter_mut(Axis(2))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+                //A cleaner way needs to exists to perform this operation.
+                let mut rtensor = Array2::<f64>::zeros((3, 3).f());
+                rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
+                tensor.assign({&rtensor});
+            });
+        } else{
+            //We just have one rmat so we can multiple that by our tensors.
+            //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
+            //to use the dot function
+            azip!(mut  tensor (tensor.axis_iter_mut(Axis(2))) in {
+                //A cleaner way needs to exists to perform this operation.
+                let mut rtensor = Array2::<f64>::zeros((3, 3).f());
+                rtensor.assign({&self.ori.subview(Axis(2), 0).dot(&tensor.dot(&self.ori.subview(Axis(2), 0).t()))});
+                tensor.assign({&rtensor});
+            });
+        }
+    }//End of rot_tensor_inplace
+
+}//End of Impl RotTensor for RMat

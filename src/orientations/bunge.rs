@@ -17,7 +17,7 @@ use super::*;
 
 #[derive(Clone, Debug)]
 pub struct Bunge{
-    pub ori: Array2<f64>,
+    ori: Array2<f64>,
 }
 
 impl Bunge{
@@ -53,14 +53,25 @@ impl Bunge{
         }
     }//End of new_init
 
+    //Return a view of ori
+    pub fn ori_view(&self) -> ArrayView2<f64>{
+        self.ori.view()
+    }
+
+    //Return a mutable view of ori
+    pub fn ori_view_mut(&mut self) -> ArrayViewMut2<f64>{
+        self.ori.view_mut()
+    }
+}//End of Bunge impl
+impl OriConv for Bunge{
     //Just returns self if called
-    pub fn to_bunge(&self) -> Bunge{
+    fn to_bunge(&self) -> Bunge{
         self.clone()
     }//End of to_bunge
 
     //Converts the Bunge angles over to a rotation matrix which has the following properties
     //shape (3, 3, nelems), memory order = fortran/column major.
-    pub fn to_rmat(&self) -> RMat{
+    fn to_rmat(&self) -> RMat{
 
         let nelems = self.ori.len_of(Axis(1));
         
@@ -87,14 +98,12 @@ impl Bunge{
             rmat[[2, 2]] = c2;
         });
 
-        RMat{
-            ori,
-        }
+        RMat::new_init(ori)
     }//End of to_rmat
 
     //Converts the Bunge angles over to an angle-axis representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
-    pub fn to_ang_axis(&self) -> AngAxis{
+    fn to_ang_axis(&self) -> AngAxis{
 
         let nelems = self.ori.len_of(Axis(1));
         
@@ -129,14 +138,12 @@ impl Bunge{
             angaxis[3] = alpha;
         });
 
-        AngAxis{
-            ori,
-        }
+        AngAxis::new_init(ori)
     }//End of to_ang_axis
 
     //Converts the Bunge angles over to a compact angle-axis representation which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
-    pub fn to_ang_axis_comp(&self) -> AngAxisComp{
+    fn to_ang_axis_comp(&self) -> AngAxisComp{
         //We first convert to a angle axis representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our angle axis vector.
         let ang_axis = self.to_ang_axis();
@@ -145,7 +152,7 @@ impl Bunge{
 
     //Converts the Bunge angles over to a rodrigues vector representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
-    pub fn to_rod_vec(&self) -> RodVec{
+    fn to_rod_vec(&self) -> RodVec{
         //We first convert to a angle axis representation. Then we just need to change the last component
         //of our angle axis representation to be tan(phi/2) instead of phi
         let ang_axis = self.to_ang_axis();
@@ -154,7 +161,7 @@ impl Bunge{
 
     //Converts the Bunge angles over to a compact rodrigues vector representation which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
-    pub fn to_rod_vec_comp(&self) -> RodVecComp{
+    fn to_rod_vec_comp(&self) -> RodVecComp{
         //We first convert to a rodrigues vector representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our angle axis vector.
         //If we want to be more efficient about this in the future with out as many copies used we can reuse a lot of the code
@@ -166,7 +173,7 @@ impl Bunge{
 
     //Converts the Bunge angles over to a unit quaternion representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
-    pub fn to_quat(&self) -> Quat{
+    fn to_quat(&self) -> Quat{
 
         let nelems = self.ori.len_of(Axis(1));
         
@@ -189,8 +196,14 @@ impl Bunge{
             quat[3] = -p * c * sigma.cos();
         });
 
-        Quat{
-            ori,
-        }            
+        Quat::new_init(ori)           
     }//End of to_quat
-}//End of Impl Bunge
+
+    //Converts the angle axis representation over to a homochoric representation which has the following properties
+    //shape (4, nelems), memory order = fortran/column major.
+    fn to_homochoric(&self) -> Homochoric{
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_homochoric()
+    }//End of to_homochoric    
+
+}//End of Impl Ori_Conv for Bunge

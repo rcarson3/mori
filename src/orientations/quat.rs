@@ -39,9 +39,21 @@ impl Quat{
         }
     }//End of new_init
 
+    //Return a view of ori
+    pub fn ori_view(&self) -> ArrayView2<f64>{
+        self.ori.view()
+    }
+
+    //Return a mutable view of ori
+    pub fn ori_view_mut(&mut self) -> ArrayViewMut2<f64>{
+        self.ori.view_mut()
+    }
+}//End of Impl of Quat
+
+impl OriConv for Quat{
     //Converts the unit quaternion representation over to Bunge angles which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
-    pub fn to_bunge(&self) -> Bunge{
+    fn to_bunge(&self) -> Bunge{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -77,14 +89,12 @@ impl Quat{
             }
         });
 
-        Bunge{
-            ori,
-        }
+        Bunge::new_init(ori)
     }//End of to_bunge
 
     //Converts the unit quaternion representation over to rotation matrix which has the following properties
     //shape (3, 3, nelems), memory order = fortran/column major.
-    pub fn to_rmat(&self) -> RMat{
+    fn to_rmat(&self) -> RMat{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -106,14 +116,12 @@ impl Quat{
             rmat[[2, 2]] = qbar + quat[3] * quat[3];
         });
 
-        RMat{
-            ori,
-        }
+        RMat::new_init(ori)
     }//End of to_rmat
 
     //Converts the unit quaternion representation over to angle-axis representation which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
-    pub fn to_ang_axis(&self) -> AngAxis{
+    fn to_ang_axis(&self) -> AngAxis{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -139,14 +147,12 @@ impl Quat{
             }
         });
 
-        AngAxis{
-            ori,
-        }
+        AngAxis::new_init(ori)
     }//End of to_ang_axis
 
     //Converts the unit quaternion over to a compact angle-axis representation which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
-    pub fn to_ang_axis_comp(&self) -> AngAxisComp{
+    fn to_ang_axis_comp(&self) -> AngAxisComp{
         //We first convert to a angle axis representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our angle axis vector.
         let ang_axis = self.to_ang_axis();
@@ -155,7 +161,7 @@ impl Quat{
 
     //Converts the unit quaternion over to a rodrigues vector representation which has the following properties
     //shape (4, nelems), memory order = fortran/column major.
-    pub fn to_rod_vec(&self) -> RodVec{
+    fn to_rod_vec(&self) -> RodVec{
         //We first convert to a angle axis representation. Then we just need to change the last component
         //of our angle axis representation to be tan(phi/2) instead of phi
         let ang_axis = self.to_ang_axis();
@@ -164,7 +170,7 @@ impl Quat{
 
     //Converts the unit quaternion over to a compact rodrigues vector representation which has the following properties
     //shape (3, nelems), memory order = fortran/column major.
-    pub fn to_rod_vec_comp(&self) -> RodVecComp{
+    fn to_rod_vec_comp(&self) -> RodVecComp{
         //We first convert to a rodrigues vector representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our angle axis vector.
         let rod_vec = self.to_rod_vec();
@@ -172,11 +178,13 @@ impl Quat{
     }//End of to_rod_vec_comp
 
     //This returns a clone of the original Quaternion structure
-    pub fn to_quat(&self) -> Quat{
+    fn to_quat(&self) -> Quat{
         self.clone()
     }//End of to_quat
 
-    pub fn to_homochoric(&self) -> Homochoric{
+    //Converts the quaternion representation over to a homochoric representation which has the following properties
+    //shape (4, nelems), memory order = fortran/column major.
+    fn to_homochoric(&self) -> Homochoric{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
     }//End of to_homochoric
