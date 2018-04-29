@@ -1,20 +1,21 @@
 // This file is a part of the mori - Material Orientation Library in Rust
 // Copyright 2018 Robert Carson
-
+//
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
 //    You may obtain a copy of the License at
-
+//
 //        http://www.apache.org/licenses/LICENSE-2.0
-
+//
 //    Unless required by applicable law or agreed to in writing, software
 //    distributed under the License is distributed on an "AS IS" BASIS,
 //    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //    See the License for the specific language governing permissions and
-// limitations under the License.
+//    limitations under the License.
 
 use super::*;
 
+///A struct that holds an array of Bunge angles.
 #[derive(Clone, Debug)]
 pub struct Bunge{
     ori: Array2<f64>,
@@ -22,7 +23,7 @@ pub struct Bunge{
 
 impl Bunge{
 
-    //Creates an array of zeros for the initial Bunge angles when data is not fed into it
+    ///Creates an array of zeros for the initial Bunge angles when data is not fed into it
     pub fn new(size: usize) -> Bunge{
         assert!(size > 0, "Size inputted: {}, was not greater than 0", size);
 
@@ -33,9 +34,9 @@ impl Bunge{
         }
     }//End of new
 
-    //Creates a Bunge type with the supplied data as long as the supplied data is in the following format
-    //shape (3, nelems), memory order = fortran/column major.
-    //If it doesn't fit those standards it will fail.
+    ///Creates a Bunge type with the supplied data as long as the supplied data is in the following format
+    ///shape (3, nelems), memory order = fortran/column major.
+    ///If it doesn't fit those standards it will fail.
     pub fn new_init(ori: Array2<f64>) -> Bunge{
 
         let nrow = ori.rows();
@@ -53,24 +54,27 @@ impl Bunge{
         }
     }//End of new_init
 
-    //Return a view of ori
+    ///Return a ndarray view of the orientation data
     pub fn ori_view(&self) -> ArrayView2<f64>{
         self.ori.view()
     }
 
-    //Return a mutable view of ori
+    ///Return a ndarray mutable view of the orienation data
     pub fn ori_view_mut(&mut self) -> ArrayViewMut2<f64>{
         self.ori.view_mut()
     }
 }//End of Bunge impl
+
+///The orientation conversions of a series of Bunge angles to a number of varying different orientation
+///representations commonly used in material orientation processing. 
 impl OriConv for Bunge{
-    //Just returns self if called
+    ///The conversion from Bunge angles to Bungle angles just returns a copy of the original data structure.
     fn to_bunge(&self) -> Bunge{
         self.clone()
     }//End of to_bunge
 
-    //Converts the Bunge angles over to a rotation matrix which has the following properties
-    //shape (3, 3, nelems), memory order = fortran/column major.
+    ///Converts the Bunge angles over to a rotation matrix which has the following properties
+    ///shape (3, 3, nelems), memory order = fortran/column major.
     fn to_rmat(&self) -> RMat{
 
         let nelems = self.ori.len_of(Axis(1));
@@ -101,8 +105,8 @@ impl OriConv for Bunge{
         RMat::new_init(ori)
     }//End of to_rmat
 
-    //Converts the Bunge angles over to an angle-axis representation which has the following properties
-    //shape (4, nelems), memory order = fortran/column major.
+    ///Converts the Bunge angles over to an angle-axis representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     fn to_ang_axis(&self) -> AngAxis{
 
         let nelems = self.ori.len_of(Axis(1));
@@ -141,29 +145,29 @@ impl OriConv for Bunge{
         AngAxis::new_init(ori)
     }//End of to_ang_axis
 
-    //Converts the Bunge angles over to a compact angle-axis representation which has the following properties
-    //shape (3, nelems), memory order = fortran/column major.
+    ///Converts the Bunge angles over to a compact angle-axis representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     fn to_ang_axis_comp(&self) -> AngAxisComp{
-        //We first convert to a angle axis representation. Then we scale our normal vector by our the rotation
-        //angle which is the fourth component of our angle axis vector.
+        //We first convert to a axis-angle representation. Then we scale our normal vector by our the rotation
+        //angle which is the fourth component of our axis-angle vector.
         let ang_axis = self.to_ang_axis();
         ang_axis.to_ang_axis_comp()
     }//End of to_ang_axis_comp
 
-    //Converts the Bunge angles over to a rodrigues vector representation which has the following properties
-    //shape (4, nelems), memory order = fortran/column major.
+    ///Converts the Bunge angles over to a Rodrigues vector representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     fn to_rod_vec(&self) -> RodVec{
-        //We first convert to a angle axis representation. Then we just need to change the last component
-        //of our angle axis representation to be tan(phi/2) instead of phi
+        //We first convert to a axis-angle representation. Then we just need to change the last component
+        //of our axis-angle representation to be tan(phi/2) instead of phi
         let ang_axis = self.to_ang_axis();
         ang_axis.to_rod_vec()
     }//End of to_rod_vec
 
-    //Converts the Bunge angles over to a compact rodrigues vector representation which has the following properties
-    //shape (3, nelems), memory order = fortran/column major.
+    ///Converts the Bunge angles over to a compact Rodrigues vector representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     fn to_rod_vec_comp(&self) -> RodVecComp{
-        //We first convert to a rodrigues vector representation. Then we scale our normal vector by our the rotation
-        //angle which is the fourth component of our angle axis vector.
+        //We first convert to a Rodrigues vector representation. Then we scale our normal vector by our the rotation
+        //angle which is the fourth component of our axis-angle vector.
         //If we want to be more efficient about this in the future with out as many copies used we can reuse a lot of the code
         //used in the to_ang_axis code. However, we will end up with a lot of similar/repeated code then. We could put that
         //code in a helper function that isn't seen.
@@ -171,8 +175,8 @@ impl OriConv for Bunge{
         rod_vec.to_rod_vec_comp()
     }//End of to_rod_vec_comp
 
-    //Converts the Bunge angles over to a unit quaternion representation which has the following properties
-    //shape (4, nelems), memory order = fortran/column major.
+    ///Converts the Bunge angles over to a unit quaternion representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     fn to_quat(&self) -> Quat{
 
         let nelems = self.ori.len_of(Axis(1));
@@ -199,8 +203,8 @@ impl OriConv for Bunge{
         Quat::new_init(ori)           
     }//End of to_quat
 
-    //Converts the angle axis representation over to a homochoric representation which has the following properties
-    //shape (4, nelems), memory order = fortran/column major.
+    ///Converts Bunge angles over to a homochoric representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     fn to_homochoric(&self) -> Homochoric{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
