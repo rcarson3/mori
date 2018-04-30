@@ -257,8 +257,7 @@ impl RotVector for RMat{
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
             rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
-        }
-
+        }//End if-else
         //Now we just need to return the rvec value
         rvec
     }//End of rot_vector
@@ -306,7 +305,7 @@ impl RotVector for RMat{
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
             rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
-        }
+        }//End if-else
     }//End of rot_vector_mut
 
     ///rot_vector_inplace takes in a mutable 2D array view of a series of vectors. It then rotates these vectors using the
@@ -349,7 +348,7 @@ impl RotVector for RMat{
                 rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
                 vec.assign({&rvec});
             });
-        }
+        }//End if-else
     }//End of rot_vector_inplace
 }//Endo of Impl RotVector
 
