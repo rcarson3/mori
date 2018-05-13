@@ -33,7 +33,7 @@ impl RodVec{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))) in {rodvec[3] = 1.0_f64});
+        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))) in {rodvec[2] = 1.0_f64});
 
         RodVec{
             ori,
@@ -371,9 +371,7 @@ impl RodVecComp{
     pub fn new(size: usize) -> RodVecComp{
         assert!(size > 0, "Size inputted: {}, was not greater than 0", size);
 
-        let mut ori = Array2::<f64>::zeros((4, size).f());
-
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))) in {rodvec[3] = 1.0_f64});
+        let ori = Array2::<f64>::zeros((3, size).f());
 
         RodVecComp{
             ori,
@@ -387,7 +385,7 @@ impl RodVecComp{
 
         let nrow = ori.rows();
 
-        assert!(nrow == 4, "Number of rows of array was: {}, which is not equal to 4", nrow);
+        assert!(nrow == 3, "Number of rows of array was: {}, which is not equal to 4", nrow);
         //We need to deal with a borrowing of ori here, so we need to have strides dropped at one point.
         {
             let strides = ori.strides();
@@ -454,18 +452,25 @@ impl OriConv for RodVecComp{
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
+        let tol = std::f64::EPSILON;
+
         azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref rodvec_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_rodvec = f64::sqrt({
-                rodvec_comp[0]*rodvec_comp[0] 
-                + rodvec_comp[1]*rodvec_comp[1] 
+                rodvec_comp[0] * rodvec_comp[0] 
+                + rodvec_comp[1] * rodvec_comp[1] 
                 + rodvec_comp[2] * rodvec_comp[2]
                 });
-            let inv_norm_rodvec = 1.0_f64 / norm_rodvec;
-
-            rodvec[0] = rodvec_comp[0] * inv_norm_rodvec;
-            rodvec[1] = rodvec_comp[1] * inv_norm_rodvec;
-            rodvec[2] = rodvec_comp[2] * inv_norm_rodvec;
-            rodvec[3] = norm_rodvec;
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_rodvec.abs() < tol {
+                rodvec[2] = 1.0_f64;
+            }else{
+                let inv_norm_rodvec = 1.0_f64 / norm_rodvec;
+                rodvec[0] = rodvec_comp[0] * inv_norm_rodvec;
+                rodvec[1] = rodvec_comp[1] * inv_norm_rodvec;
+                rodvec[2] = rodvec_comp[2] * inv_norm_rodvec;
+                rodvec[3] = norm_rodvec;
+            }
         });
 
         RodVec::new_init(ori)

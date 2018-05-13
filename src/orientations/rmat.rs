@@ -84,10 +84,10 @@ impl OriConv for RMat{
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
         //We need to check the R_33 component to see if it's near 1.0 
-        let tol = std::f64::EPSILON;
+        let tol = f64::sqrt(std::f64::EPSILON);
 
         azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
-            if f64::abs(rmat[[2, 2]] - 1.0_f64) < tol{
+            if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
                 bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
                 bunge[1] = std::f64::consts::FRAC_PI_2 * (1.0_f64 - rmat[[2, 2]]);
                 bunge[2] = 0.0_f64;
@@ -174,40 +174,42 @@ impl OriConv for RMat{
     ///Converts the rotation matrix over to a unit quaternion representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     fn to_quat(&self) -> Quat{
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_quat()
+        //The below should work but it doesn't...
+        // let nelems = self.ori.len_of(Axis(2));
 
-        let nelems = self.ori.len_of(Axis(2));
+        // let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+        // let inv2 = 1.0_f64/2.0_f64;
 
-        let inv2 = 1.0_f64/2.0_f64;
+        // azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        //     let q0 = inv2 * f64::sqrt(1.0_f64 + rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]]);
+        //     let mut q1 = inv2 * f64::sqrt(1.0_f64 + rmat[[0, 0]] - rmat[[1, 1]] - rmat[[2, 2]]);
+        //     let mut q2 = inv2 * f64::sqrt(1.0_f64 - rmat[[0, 0]] + rmat[[1, 1]] - rmat[[2, 2]]);
+        //     let mut q3 = inv2 * f64::sqrt(1.0_f64 - rmat[[0, 0]] - rmat[[1, 1]] + rmat[[2, 2]]);
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
-            let q0 = inv2 * f64::sqrt(1.0_f64 + rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]]);
-            let mut q1 = inv2 * f64::sqrt(1.0_f64 + rmat[[0, 0]] - rmat[[1, 1]] - rmat[[2, 2]]);
-            let mut q2 = inv2 * f64::sqrt(1.0_f64 - rmat[[0, 0]] + rmat[[1, 1]] - rmat[[2, 2]]);
-            let mut q3 = inv2 * f64::sqrt(1.0_f64 - rmat[[0, 0]] - rmat[[1, 1]] + rmat[[2, 2]]);
+        //     // if rmat[[1, 2]] > rmat[[2, 1]]{
+        //         q1 *= f64::signum(rmat[[2, 1]] - rmat[[1, 2]]);
+        //     // }
+        //     // if rmat[[2, 0]] > rmat[[0, 2]]{
+        //         q2 *= f64::signum(rmat[[0, 2]] - rmat[[2, 0]]);
+        //     // }
+        //     // if rmat[[0, 1]] > rmat[[1, 0]]{
+        //         q3 *= f64::signum(rmat[[1, 0]] - rmat[[0, 1]]);
+        //     // }
 
-            if rmat[[1, 2]] > rmat[[2, 1]]{
-                q1 *= -1.0_f64;
-            }
-            if rmat[[2, 0]] > rmat[[0, 2]]{
-                q2 *= -1.0_f64;
-            }
-            if rmat[[0, 1]] > rmat[[1, 0]]{
-                q3 *= -1.0_f64;
-            }
-
-            //We need to normalize our quaternion when we store it.
-            let inv_norm = 1.0_f64 / f64::sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-            //Once the inv_norm is calculated we apply it to each individual component of our unit
-            //quaternion and obtain our 
-            quat[0] = q0 * inv_norm;
-            quat[1] = q1 * inv_norm;
-            quat[2] = q2 * inv_norm;
-            quat[3] = q3 * inv_norm;
-        });
-
-        Quat::new_init(ori)
+        //     //We need to normalize our quaternion when we store it.
+        //     let inv_norm = 1.0_f64 / f64::sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
+        //     //Once the inv_norm is calculated we apply it to each individual component of our unit
+        //     //quaternion and obtain our 
+        //     quat[0] = q0 * inv_norm;
+        //     quat[1] = q1 * inv_norm;
+        //     quat[2] = q2 * inv_norm;
+        //     quat[3] = q3 * inv_norm;
+        // });
+        // 
+        // Quat::new_init(ori)
     }//End of to_quat
 
     ///Converts the rotation matrix representation over to a homochoric representation which has the following properties

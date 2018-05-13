@@ -76,7 +76,7 @@ impl OriConv for Quat{
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        let tol = std::f64::EPSILON;
+        let tol = f64::sqrt(std::f64::EPSILON);
 
         azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let q03 = quat[0] * quat[0] + quat[3] * quat[3];
@@ -99,7 +99,7 @@ impl OriConv for Quat{
                 bunge[0] = t1.atan2(t2);
                 bunge[1] = f64::atan2(2.0_f64 * xi, q03 - q12);
                 //Once again these terms going into the atan2 term are pretty long
-                let t1 = inv_xi * (quat[0] * quat[2] - quat[1] * quat[3]);
+                let t1 = inv_xi * (quat[0] * quat[2] + quat[1] * quat[3]);
                 let t2 = inv_xi * (quat[2] * quat[3] - quat[0] * quat[1]);
                 //We can finally find the final bunge angle
                 bunge[2] = t1.atan2(t2);
@@ -120,17 +120,17 @@ impl OriConv for Quat{
         azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
-            rmat[[0, 0]] = qbar + quat[1] * quat[1];
+            rmat[[0, 0]] = qbar + 2.0_f64 * quat[1] * quat[1];
             rmat[[1, 0]] = 2.0_f64 * (quat[1] * quat[2] + quat[0] * quat[3]);
             rmat[[2, 0]] = 2.0_f64 * (quat[1] * quat[3] - quat[0] * quat[2]);
 
-            rmat[[1, 1]] = 2.0_f64 * (quat[1] * quat[2] - quat[0] * quat[3]);
-            rmat[[1, 1]] = qbar + quat[2] * quat[2];
+            rmat[[0, 1]] = 2.0_f64 * (quat[1] * quat[2] - quat[0] * quat[3]);
+            rmat[[1, 1]] = qbar + 2.0_f64 * quat[2] * quat[2];
             rmat[[2, 1]] = 2.0_f64 * (quat[2] * quat[3] + quat[0] * quat[1]);
 
             rmat[[0, 2]] = 2.0_f64 * (quat[1] * quat[3] + quat[0] * quat[2]);
             rmat[[1, 2]] = 2.0_f64 * (quat[2] * quat[3] - quat[0] * quat[1]);
-            rmat[[2, 2]] = qbar + quat[3] * quat[3];
+            rmat[[2, 2]] = qbar + 2.0_f64 * quat[3] * quat[3];
         });
 
         RMat::new_init(ori)
@@ -142,19 +142,20 @@ impl OriConv for Quat{
 
         let nelems = self.ori.len_of(Axis(1));
 
-        let mut ori = Array2::<f64>::zeros((4, nelems));
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
         let tol = std::f64::EPSILON;
 
         azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1];
                 angaxis[1] = quat[2];
                 angaxis[2] = quat[3];
                 angaxis[3] = std::f64::consts::PI;
+            }else if phi.abs() < tol{
+                angaxis[2] = 1.0_f64;
             }else{
-                //This is our angle of rotation
-                let phi = 2.0_f64 * quat[0].acos();
                 let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
                 angaxis[0] = s * quat[1];

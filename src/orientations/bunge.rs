@@ -90,15 +90,15 @@ impl OriConv for Bunge{
             let c3 = bunge[2].cos();
 
             rmat[[0, 0]] = c1 * c3 - s1 * s3 * c2;
-            rmat[[0, 1]] = -c1 * s3 - s1 * c2 * c3;
-            rmat[[0, 2]] = s1 * s2;
+            rmat[[1, 0]] = -c1 * s3 - s1 * c2 * c3;
+            rmat[[2, 0]] = s1 * s2;
 
-            rmat[[1, 0]] = s1 * c3 + c1 * c2 * s3;
+            rmat[[0, 1]] = s1 * c3 + c1 * c2 * s3;
             rmat[[1, 1]] = -s1 * s3 + c1 * c2 * c3;
-            rmat[[1, 2]] = -c1 * s2;
+            rmat[[2, 1]] = -c1 * s2;
 
-            rmat[[2, 0]] = s2 * s3;
-            rmat[[2, 1]] = s2 * c3;
+            rmat[[0, 2]] = s2 * s3;
+            rmat[[1, 2]] = s2 * c3;
             rmat[[2, 2]] = c2;
         });
 
@@ -108,41 +108,45 @@ impl OriConv for Bunge{
     ///Converts the Bunge angles over to an angle-axis representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     fn to_ang_axis(&self) -> AngAxis{
+        let rmat = self.to_rmat();
+        rmat.to_ang_axis()
 
-        let nelems = self.ori.len_of(Axis(1));
+        //This should also work but it doesn't appear to so we're using the above
+        //instead
+        // let nelems = self.ori.len_of(Axis(1));
         
-        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+        // let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        let inv2 = 1.0_f64/2.0_f64;
+        // let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref bunge (self.ori.axis_iter(Axis(1))) in {
-            let t       = f64::tan(bunge[1] * inv2);
-            let sigma   = inv2 * (bunge[0] + bunge[2]);
-            let csigma  = sigma.cos();
-            let ssigma  = sigma.sin();
-            let delta   = inv2 * (bunge[0] - bunge[2]);
-            let tau     = f64::sqrt(t * t + ssigma * ssigma);
-            let mut alpha   = 2.0_f64 * f64::atan(tau / csigma);
-            let itau = 1.0_f64 / tau;
-            let mut p:f64;
+        // azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref bunge (self.ori.axis_iter(Axis(1))) in {
+        //     let t       = f64::tan(bunge[1] * inv2);
+        //     let sigma   = inv2 * (bunge[0] + bunge[2]);
+        //     let csigma  = sigma.cos();
+        //     let ssigma  = sigma.sin();
+        //     let delta   = inv2 * (bunge[0] - bunge[2]);
+        //     let tau     = f64::sqrt(t * t + ssigma * ssigma);
+        //     let mut alpha   = 2.0_f64 * f64::atan(tau / csigma);
+        //     let itau = 1.0_f64 / tau;
+        //     let mut p:f64;
 
-            //If alpha is greater than pi we need to set p equal to 1 and
-            //set alpha equal to 2*pi - alpha. If it isn't then p is set
-            //to -1. Afterwards everything else is the same.
-            if alpha > std::f64::consts::PI{
-                p = 1.0_f64;
-                alpha = 2.0_f64 * std::f64::consts::PI - alpha;
-            }else{
-                p = -1.0_f64;
-            }
+        //     //If alpha is greater than pi we need to set p equal to 1 and
+        //     //set alpha equal to 2*pi - alpha. If it isn't then p is set
+        //     //to -1. Afterwards everything else is the same.
+        //     if alpha > std::f64::consts::PI{
+        //         p = 1.0_f64;
+        //         alpha = 2.0_f64 * std::f64::consts::PI - alpha;
+        //     }else{
+        //         p = -1.0_f64;
+        //     }
 
-            angaxis[0] = p * itau * t * delta.cos();
-            angaxis[1] = p * itau * t * delta.sin();
-            angaxis[2] = p * itau * t * csigma;
-            angaxis[3] = alpha;
-        });
+        //     angaxis[0] = p * itau * t * delta.cos();
+        //     angaxis[1] = p * itau * t * delta.sin();
+        //     angaxis[2] = p * itau * ssigma;
+        //     angaxis[3] = alpha;
+        // });
 
-        AngAxis::new_init(ori)
+        // AngAxis::new_init(ori)
     }//End of to_ang_axis
 
     ///Converts the Bunge angles over to a compact angle-axis representation which has the following properties
@@ -179,28 +183,32 @@ impl OriConv for Bunge{
     ///shape (4, nelems), memory order = fortran/column major.
     fn to_quat(&self) -> Quat{
 
-        let nelems = self.ori.len_of(Axis(1));
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_quat()
+        //The below should also work but it appears to be following short so
+        //we're going to do the following...
+        // let nelems = self.ori.len_of(Axis(1));
         
-        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+        // let mut ori = Array2::<f64>::zeros((4, nelems).f());
         
-        //This is a constant factor used in the loop.
-        let inv2 = 1.0_f64/2.0_f64;
+        // //This is a constant factor used in the loop.
+        // let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref bunge (self.ori.axis_iter(Axis(1))) in {
-            let sigma   = inv2 * (bunge[0] + bunge[2]);
-            let delta   = inv2 * (bunge[0] - bunge[2]);
-            let c       = f64::cos(inv2 * bunge[1]);
-            let s       = f64::sin(inv2 * bunge[1]);
-            let q0      = c * sigma.cos();
-            let p       = if q0 < 0.0_f64{-1.0_f64} else{1.0_f64};
+        // azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref bunge (self.ori.axis_iter(Axis(1))) in {
+        //     let sigma   = inv2 * (bunge[0] + bunge[2]);
+        //     let delta   = inv2 * (bunge[0] - bunge[2]);
+        //     let c       = f64::cos(inv2 * bunge[1]);
+        //     let s       = f64::sin(inv2 * bunge[1]);
+        //     let q0      = c * sigma.cos();
+        //     let p       = if q0 < 0.0_f64{-1.0_f64} else{1.0_f64};
 
-            quat[0] = p * q0;
-            quat[1] = -p * s * delta.cos();
-            quat[2] = -p * s * delta.sin();
-            quat[3] = -p * c * sigma.cos();
-        });
+        //     quat[0] = p * q0;
+        //     quat[1] = -p * s * delta.cos();
+        //     quat[2] = -p * s * delta.sin();
+        //     quat[3] = -p * c * sigma.cos();
+        // });
 
-        Quat::new_init(ori)           
+        // Quat::new_init(ori)           
     }//End of to_quat
 
     ///Converts Bunge angles over to a homochoric representation which has the following properties

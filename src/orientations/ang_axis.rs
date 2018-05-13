@@ -178,7 +178,7 @@ impl OriConv for AngAxis{
 
         let nelems = self.ori.len_of(Axis(1));
 
-        let mut ori = Array2::<f64>::zeros((3, nelems).f());
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
         let inv2 = 1.0_f64 / 2.0_f64;
 
@@ -429,9 +429,9 @@ impl AngAxisComp{
     pub fn new(size: usize) -> AngAxisComp{
         assert!(size > 0, "Size inputted: {}, was not greater than 0", size);
 
-        let mut ori = Array2::<f64>::zeros((4, size).f());
+        let mut ori = Array2::<f64>::zeros((3, size).f());
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))) in {angaxis[3] = 1.0_f64});
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))) in {angaxis[2] = 1.0_f64});
 
         AngAxisComp{
             ori,
@@ -445,7 +445,7 @@ impl AngAxisComp{
 
         let nrow = ori.rows();
 
-        assert!(nrow == 4, "Number of rows of array was: {}, which is not equal to 4", nrow);
+        assert!(nrow == 3, "Number of rows of array was: {}, which is not equal to 4", nrow);
         //We need to deal with a borrowing of ori here, so we need to have strides dropped at one point.
         {
             let strides = ori.strides();
@@ -497,18 +497,26 @@ impl OriConv for AngAxisComp{
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
+        let tol = std::f64::EPSILON;
+
         azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
                 + angaxis_comp[2] * angaxis_comp[2]
                 });
-            let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                angaxis[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
 
-            angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
-            angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
-            angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
-            angaxis[3] = norm_angaxis;
+                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
+                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
+                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
+                angaxis[3] = norm_angaxis;
+            }
         });
 
         AngAxis::new_init(ori)
