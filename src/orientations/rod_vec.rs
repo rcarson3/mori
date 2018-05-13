@@ -14,10 +14,11 @@
 //    limitations under the License.
 
 use super::*;
+use std::cmp;
 ///A structure that holds an array of Rodrigues vectors
 #[derive(Clone, Debug)]
 pub struct RodVec{
-    pub ori: Array2<f64>,
+    ori: Array2<f64>,
 }
 ///A structure that holds an array of compact Rodrigues vectors
 #[derive(Clone, Debug)]
@@ -177,13 +178,15 @@ impl RotVector for RodVec{
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
 
-        assert!( (nelems == rnelems) | (rnelems == 1), 
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
         "The number of elements in the vector field must be equal to the number of elements in the
-        Rodrigues vector structure, or their must only be one element in Rodrigues vector. There are
+        Rodrigues vector structure, or their must only be one element in Rodrigues vector. The final case is
+        that there must only be one element in the vector field. There are
         currently {} elements in vector and {} elements in Rodrigues vector",
         nelems, rnelems);
 
-        let mut rvec = Array2::<f64>::zeros((3, nelems).f());
+        let mnelems = cmp::max(rnelems, nelems);
+        let mut rvec = Array2::<f64>::zeros((3, mnelems).f());
 
         //We need to see if we have more than one rotation matrix that we're multiplying by
         if rnelems == nelems {
@@ -191,37 +194,22 @@ impl RotVector for RodVec{
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref rod_vec (self.ori.axis_iter(Axis(1))) in {
-                let (sin_theta, cos_theta) = f64::sin_cos(2.0_f64 * rod_vec[3].atan());
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (rod_vec[0] * vec[0] + rod_vec[1] * vec[1] + rod_vec[2] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -rod_vec[2] * vec[1] + rod_vec[1] * vec[2];
-                cross_prod[1] = rod_vec[2] * vec[0] - rod_vec[0] * vec[1];
-                cross_prod[2] = -rod_vec[1] * vec[0] + rod_vec[0] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + rod_vec[0] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + rod_vec[1] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + rod_vec[2] * dp_mcos;    
+                rod_vec_rot_vec(&rod_vec, &vec, rvec);     
             });
-        } else{
+        } else if rnelems == 1{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
-            let rod_vec = self.ori_view();
+            let rod_vec = self.ori.subview(Axis(1), 0);
 
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
-                let (sin_theta, cos_theta) = f64::sin_cos(2.0_f64 * rod_vec[[3, 0]].atan());
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (rod_vec[[0, 0]] * vec[0] + rod_vec[[1, 0]] * vec[1] + rod_vec[[2, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -rod_vec[[2, 0]] * vec[1] + rod_vec[[1, 0]] * vec[2];
-                cross_prod[1] = rod_vec[[2, 0]] * vec[0] - rod_vec[[0, 0]] * vec[1];
-                cross_prod[2] = -rod_vec[[1, 0]] * vec[0] + rod_vec[[0, 0]] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + rod_vec[[0, 0]] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + rod_vec[[1, 0]] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + rod_vec[[2, 0]] * dp_mcos;    
+                rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             });
+        }else{
+            //We just have one Rodrigues vector so perform pretty much the above to get all of our values
+            let vec = vec.subview(Axis(1), 0);
+
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {  
+                rod_vec_rot_vec(&rod_vec, &vec, rvec); 
+            }); 
         }//End if-else
         //Now we just need to return the rvec value
         rvec
@@ -239,20 +227,22 @@ impl RotVector for RodVec{
 
         let nelems = vec.len_of(Axis(1));
         let rvnelems = rvec.len_of(Axis(1));
-        let rnelems = self.ori.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(1));
+        let mnelems = cmp::max(rnelems, nelems);
 
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
 
-        assert!((nelems == rvnelems),
-        "The number of elements in the unrotated vector field must be equal to the number of elements
-        in the supplied rotated vector field. There are currently {} elements in the unrotated vector
+        assert!((mnelems == rvnelems),
+        "The number of elements in the unrotated vector or Rodrigues vector field must be equal to the number of elements
+        in the supplied rotated vector field. There are currently {} elements in the unrotated vector or Rodrigues vector
         field and {} elements in the rotated vector field", 
-        nelems, rvnelems);
+        mnelems, rvnelems);
 
-        assert!( (nelems == rnelems) | (rnelems == 1), 
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
         "The number of elements in the vector field must be equal to the number of elements in the
-        Rodrigues vector structure, or their must only be one element in Rodrigues vector. There are
+        Rodrigues vector structure, or their must only be one element in Rodrigues vector. The final case is
+        that there must only be one element in the vector field. There are
         currently {} elements in vector and {} elements in Rodrigues vector",
         nelems, rnelems);
 
@@ -262,37 +252,22 @@ impl RotVector for RodVec{
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref rod_vec (self.ori.axis_iter(Axis(1))) in {
-                let (sin_theta, cos_theta) = f64::sin_cos(2.0_f64 * rod_vec[3].atan());
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (rod_vec[0] * vec[0] + rod_vec[1] * vec[1] + rod_vec[2] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -rod_vec[2] * vec[1] + rod_vec[1] * vec[2];
-                cross_prod[1] = rod_vec[2] * vec[0] - rod_vec[0] * vec[1];
-                cross_prod[2] = -rod_vec[1] * vec[0] + rod_vec[0] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + rod_vec[0] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + rod_vec[1] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + rod_vec[2] * dp_mcos;    
+                rod_vec_rot_vec(&rod_vec, &vec, rvec);    
             });
-        } else{
+        } else if rnelems == 1{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
-            let rod_vec = self.ori_view();
+            let rod_vec = self.ori.subview(Axis(1), 0);
 
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
-                let (sin_theta, cos_theta) = f64::sin_cos(2.0_f64 * rod_vec[[3, 0]].atan());
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (rod_vec[[0, 0]] * vec[0] + rod_vec[[1, 0]] * vec[1] + rod_vec[[2, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -rod_vec[[2, 0]] * vec[1] + rod_vec[[1, 0]] * vec[2];
-                cross_prod[1] = rod_vec[[2, 0]] * vec[0] - rod_vec[[0, 0]] * vec[1];
-                cross_prod[2] = -rod_vec[[1, 0]] * vec[0] + rod_vec[[0, 0]] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + rod_vec[[0, 0]] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + rod_vec[[1, 0]] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + rod_vec[[2, 0]] * dp_mcos;    
+                rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             });
+        }else{
+            //We just have one Rodrigues vector so perform pretty much the above to get all of our values
+            let vec = vec.subview(Axis(1), 0);
+
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {  
+                rod_vec_rot_vec(&rod_vec, &vec, rvec); 
+            }); 
         }//End if-else
     }//End of rot_vector_mut
 
@@ -304,7 +279,7 @@ impl RotVector for RodVec{
     fn rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
 
         let nelems = vec.len_of(Axis(1));
-        let rnelems = self.ori.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(1));
 
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
@@ -321,49 +296,38 @@ impl RotVector for RodVec{
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
             azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
-
-                let (sin_theta, cos_theta) = f64::sin_cos(2.0_f64 * rod_vec[3].atan());
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (rod_vec[0] * vec[0] + rod_vec[1] * vec[1] + rod_vec[2] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -rod_vec[2] * vec[1] + rod_vec[1] * vec[2];
-                cross_prod[1] = rod_vec[2] * vec[0] - rod_vec[0] * vec[1];
-                cross_prod[2] = -rod_vec[1] * vec[0] + rod_vec[0] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + rod_vec[0] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + rod_vec[1] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + rod_vec[2] * dp_mcos;
-
+                rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});    
             });
         } else{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
-            let rod_vec = self.ori_view();
+            let rod_vec = self.ori.subview(Axis(1), 0);
 
             azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
-
-                let (sin_theta, cos_theta) = f64::sin_cos(2.0_f64 * rod_vec[[3, 0]].atan());
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (rod_vec[[0, 0]] * vec[0] + rod_vec[[1, 0]] * vec[1] + rod_vec[[2, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -rod_vec[[2, 0]] * vec[1] + rod_vec[[1, 0]] * vec[2];
-                cross_prod[1] = rod_vec[[2, 0]] * vec[0] - rod_vec[[0, 0]] * vec[1];
-                cross_prod[2] = -rod_vec[[1, 0]] * vec[0] + rod_vec[[0, 0]] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + rod_vec[[0, 0]] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + rod_vec[[1, 0]] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + rod_vec[[2, 0]] * dp_mcos;
-
+                rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});  
             });
         }//End if-else
     }//End of rot_vector_inplace
 }//Endo of Impl RotVector
 
+///All of the Rodrigues vector vector rotation operations can be described by using the below series of functions.
+///This also reduces the amount of repetive code that existed earlier within rot_vector. 
+fn rod_vec_rot_vec(rod_vec: &ArrayView1<f64>, vec: &ArrayView1<f64>, mut rvec: ArrayViewMut1<f64>) {
+    let (sin_theta, cos_theta) = f64::sin_cos(2.0_f64 * rod_vec[3].atan());
+    let min_cos = 1.0_f64 - cos_theta;
+    let dp_mcos = min_cos * (rod_vec[0] * vec[0] + rod_vec[1] * vec[1] + rod_vec[2] * vec[2]);
+    let mut cross_prod = Array1::<f64>::zeros((3).f());
 
+    cross_prod[0] = -rod_vec[2] * vec[1] + rod_vec[1] * vec[2];
+    cross_prod[1] = rod_vec[2] * vec[0] - rod_vec[0] * vec[1];
+    cross_prod[2] = -rod_vec[1] * vec[0] + rod_vec[0] * vec[1];
+
+    rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + rod_vec[0] * dp_mcos;
+    rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + rod_vec[1] * dp_mcos;
+    rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + rod_vec[2] * dp_mcos;
+}
 
 impl RodVecComp{
 

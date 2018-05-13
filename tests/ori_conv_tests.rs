@@ -33,11 +33,23 @@ fn rod_edit(){
     let rod_ori = read_rod_file();
 
     let mut rod = RodVec::new_init(rod_ori.clone());
-    let mut rod_ori2 = rod.ori_view_mut();
+    //If we want to actually change the value of rod.ori we need to place the changes in a limited scope
+    //such that the mutable reference is dropped once we are done changing stuff. If we don't the compiler
+    //will complain about the mutable reference not being dropped until later.
+    {
+        let mut rod_ori2 = rod.ori_view_mut();
 
-    rod_ori2[[0,0]] = 1.0_f64;
+        rod_ori2[[0,0]] = 1.0_f64;
 
+        assert_eq!(rod_ori2[[0,0]], 1.0_f64);
+
+    }
+
+    let rod2 = rod.to_rod_vec();
+
+    let rod_ori2 = rod2.ori_view();
     assert_eq!(rod_ori2[[0,0]], 1.0_f64);
+
 }
 
 

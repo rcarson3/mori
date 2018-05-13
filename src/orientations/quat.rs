@@ -14,10 +14,12 @@
 //    limitations under the License.
 
 use super::*;
+use std::cmp;
+
 ///A structure that holds an array of unit quaternions
 #[derive(Clone, Debug)]
 pub struct Quat{
-    pub ori: Array2<f64>,
+    ori: Array2<f64>,
 }
 
 impl Quat{
@@ -225,54 +227,38 @@ impl RotVector for Quat{
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
 
-        assert!( (nelems == rnelems) | (rnelems == 1), 
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
         "The number of elements in the vector field must be equal to the number of elements in the
-        Quaternion structure, or their must only be one element in Quaternion. There are
+        Quaternion structure, or their must only be one element in Quaternion. The final case is
+        that there must only be one element in the vector field. There are
         currently {} elements in vector and {} elements in Quaternion",
         nelems, rnelems);
 
-        let mut rvec = Array2::<f64>::zeros((3, nelems).f());
+        let mnelems = cmp::max(rnelems, nelems);
+        let mut rvec = Array2::<f64>::zeros((3, mnelems).f());
 
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref quat (self.ori.axis_iter(Axis(1))) in {
-
-                let q02 = 2.0_f64 * quat[0];
-                //(q_0^2 - ||q||^2)
-                let q02_m_nq = quat[0] * quat[0] - f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] + quat[3]);
-                let dot_prod2 = 2.0_f64 * (quat[1] * vec[0] + quat[2] * vec[1] + quat[3] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -quat[3] * vec[1] + quat[2] * vec[2];
-                cross_prod[1] = quat[3] * vec[0] - quat[1] * vec[1];
-                cross_prod[2] = -quat[2] * vec[0] + quat[1] * vec[1];
-
-                rvec[0] = vec[0] * q02_m_nq + cross_prod[0] * q02 + quat[1] * dot_prod2;
-                rvec[1] = vec[1] * q02_m_nq + cross_prod[1] * q02 + quat[2] * dot_prod2;
-                rvec[2] = vec[2] * q02_m_nq + cross_prod[2] * q02 + quat[3] * dot_prod2;    
+                quat_rot_vec(&quat, &vec, rvec);     
             });
-        } else{
+        } else if rnelems == 1{
             //We just have one Quaternion so perform pretty much the above to get all of our values
-            let quat = self.ori_view();
+            let quat = self.ori.subview(Axis(1), 0);
 
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
-                let q02 = 2.0_f64 * quat[[0, 0]];
-                //(q_0^2 - ||q||^2)
-                let q02_m_nq = quat[[0, 0]] * quat[[0, 0]] - f64::sqrt(quat[[1, 0]] * quat[[1, 0]] + quat[[2, 0]] * quat[[2, 0]] + quat[[3, 0]] + quat[[3, 0]]);
-                let dot_prod2 = 2.0_f64 * (quat[[1, 0]] * vec[0] + quat[[2, 0]] * vec[1] + quat[[3, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -quat[[3, 0]] * vec[1] + quat[[2, 0]] * vec[2];
-                cross_prod[1] = quat[[3, 0]] * vec[0] - quat[[1, 0]] * vec[1];
-                cross_prod[2] = -quat[[2, 0]] * vec[0] + quat[[1, 0]] * vec[1];
-
-                rvec[0] = vec[0] * q02_m_nq + cross_prod[0] * q02 + quat[[1, 0]] * dot_prod2;
-                rvec[1] = vec[1] * q02_m_nq + cross_prod[1] * q02 + quat[[2, 0]] * dot_prod2;
-                rvec[2] = vec[2] * q02_m_nq + cross_prod[2] * q02 + quat[[3, 0]] * dot_prod2;   
+                quat_rot_vec(&quat, &vec, rvec);      
             });
-        }//End if-else
+        }else{
+            //We just have one vector so perform pretty much the above to get all of our values
+            let vec = vec.subview(Axis(1), 0);
+
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {  
+                quat_rot_vec(&quat, &vec, rvec);  
+            });
+        }//End of if-else
         //Now we just need to return the rvec value
         rvec
     }//End of rot_vector
@@ -289,20 +275,22 @@ impl RotVector for Quat{
 
         let nelems = vec.len_of(Axis(1));
         let rvnelems = rvec.len_of(Axis(1));
-        let rnelems = self.ori.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(1));
+        let mnelems = cmp::max(rnelems, nelems);
 
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
 
-        assert!((nelems == rvnelems),
-        "The number of elements in the unrotated vector field must be equal to the number of elements
-        in the supplied rotated vector field. There are currently {} elements in the unrotated vector
+        assert!((mnelems == rvnelems),
+        "The number of elements in the unrotated vector or quaternion field must be equal to the number of elements
+        in the supplied rotated vector field. There are currently {} elements in the unrotated vector or quaternion
         field and {} elements in the rotated vector field", 
-        nelems, rvnelems);
+        mnelems, rvnelems);
 
-        assert!( (nelems == rnelems) | (rnelems == 1), 
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
         "The number of elements in the vector field must be equal to the number of elements in the
-        Quaternion structure, or their must only be one element in Quaternion. There are
+        Quaternion structure, or their must only be one element in Quaternion. The final case is
+        that there must only be one element in the vector field. There are
         currently {} elements in vector and {} elements in Quaternion",
         nelems, rnelems);
 
@@ -311,38 +299,21 @@ impl RotVector for Quat{
             //The rotations here can be given by reference 1  equation 24 in the README.
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref quat (self.ori.axis_iter(Axis(1))) in {
-                let q02 = 2.0_f64 * quat[0];
-                //(q_0^2 - ||q||^2)
-                let q02_m_nq = quat[0] * quat[0] - f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] + quat[3]);
-                let dot_prod2 = 2.0_f64 * (quat[1] * vec[0] + quat[2] * vec[1] + quat[3] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -quat[3] * vec[1] + quat[2] * vec[2];
-                cross_prod[1] = quat[3] * vec[0] - quat[1] * vec[1];
-                cross_prod[2] = -quat[2] * vec[0] + quat[1] * vec[1];
-
-                rvec[0] = vec[0] * q02_m_nq + cross_prod[0] * q02 + quat[1] * dot_prod2;
-                rvec[1] = vec[1] * q02_m_nq + cross_prod[1] * q02 + quat[2] * dot_prod2;
-                rvec[2] = vec[2] * q02_m_nq + cross_prod[2] * q02 + quat[3] * dot_prod2;    
+                quat_rot_vec(&quat, &vec, rvec);         
             });
-        } else{
+        } else if rnelems == 1{
             //We just have one Quaternion so perform pretty much the above to get all of our values
-            let quat = self.ori_view();
+            let quat = self.ori.subview(Axis(1), 0);
 
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
-                let q02 = 2.0_f64 * quat[[0, 0]];
-                //(q_0^2 - ||q||^2)
-                let q02_m_nq = quat[[0, 0]] * quat[[0, 0]] - f64::sqrt(quat[[1, 0]] * quat[[1, 0]] + quat[[2, 0]] * quat[[2, 0]] + quat[[3, 0]] + quat[[3, 0]]);
-                let dot_prod2 = 2.0_f64 * (quat[[1, 0]] * vec[0] + quat[[2, 0]] * vec[1] + quat[[3, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
+                quat_rot_vec(&quat, &vec, rvec);  
+            });
+        } else{
+            //We just have one vector so perform pretty much the above to get all of our values
+            let vec = vec.subview(Axis(1), 0);
 
-                cross_prod[0] = -quat[[3, 0]] * vec[1] + quat[[2, 0]] * vec[2];
-                cross_prod[1] = quat[[3, 0]] * vec[0] - quat[[1, 0]] * vec[1];
-                cross_prod[2] = -quat[[2, 0]] * vec[0] + quat[[1, 0]] * vec[1];
-
-                rvec[0] = vec[0] * q02_m_nq + cross_prod[0] * q02 + quat[[1, 0]] * dot_prod2;
-                rvec[1] = vec[1] * q02_m_nq + cross_prod[1] * q02 + quat[[2, 0]] * dot_prod2;
-                rvec[2] = vec[2] * q02_m_nq + cross_prod[2] * q02 + quat[[3, 0]] * dot_prod2;      
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {  
+                quat_rot_vec(&quat, &vec, rvec);  
             });
         }//End of if-else
     }//End of rot_vector_mut
@@ -355,7 +326,7 @@ impl RotVector for Quat{
     fn rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
 
         let nelems = vec.len_of(Axis(1));
-        let rnelems = self.ori.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(1));
 
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
@@ -371,46 +342,36 @@ impl RotVector for Quat{
             //The rotations here can be given by reference 1  equation 24 in the README.
             azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
-
-                let q02 = 2.0_f64 * quat[0];
-                //(q_0^2 - ||q||^2)
-                let q02_m_nq = quat[0] * quat[0] - f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] + quat[3]);
-                let dot_prod2 = 2.0_f64 * (quat[1] * vec[0] + quat[2] * vec[1] + quat[3] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -quat[3] * vec[1] + quat[2] * vec[2];
-                cross_prod[1] = quat[3] * vec[0] - quat[1] * vec[1];
-                cross_prod[2] = -quat[2] * vec[0] + quat[1] * vec[1];
-
-                rvec[0] = vec[0] * q02_m_nq + cross_prod[0] * q02 + quat[1] * dot_prod2;
-                rvec[1] = vec[1] * q02_m_nq + cross_prod[1] * q02 + quat[2] * dot_prod2;
-                rvec[2] = vec[2] * q02_m_nq + cross_prod[2] * q02 + quat[3] * dot_prod2; 
-
+                quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});    
             });
         } else{
             //We just have one Quaternion so perform pretty much the above to get all of our values
-            let quat = self.ori_view();
+            let quat = self.ori.subview(Axis(1), 0);
 
             azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
-                let mut rvec = Array1::<f64>::zeros((3).f());
-
-                let q02 = 2.0_f64 * quat[[0, 0]];
-                //(q_0^2 - ||q||^2)
-                let q02_m_nq = quat[[0, 0]] * quat[[0, 0]] - f64::sqrt(quat[[1, 0]] * quat[[1, 0]] + quat[[2, 0]] * quat[[2, 0]] + quat[[3, 0]] + quat[[3, 0]]);
-                let dot_prod2 = 2.0_f64 * (quat[[1, 0]] * vec[0] + quat[[2, 0]] * vec[1] + quat[[3, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -quat[[3, 0]] * vec[1] + quat[[2, 0]] * vec[2];
-                cross_prod[1] = quat[[3, 0]] * vec[0] - quat[[1, 0]] * vec[1];
-                cross_prod[2] = -quat[[2, 0]] * vec[0] + quat[[1, 0]] * vec[1];
-
-                rvec[0] = vec[0] * q02_m_nq + cross_prod[0] * q02 + quat[[1, 0]] * dot_prod2;
-                rvec[1] = vec[1] * q02_m_nq + cross_prod[1] * q02 + quat[[2, 0]] * dot_prod2;
-                rvec[2] = vec[2] * q02_m_nq + cross_prod[2] * q02 + quat[[3, 0]] * dot_prod2;   
-
+                let mut rvec = Array1::<f64>::zeros((3).f()); 
+                quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});  
             });
         }//End of if-else
     }//End of rot_vector_inplace
 }//Endo of Impl RotVector
+
+///All of the quaternion vector rotation operations can be described by using the below series of functions.
+///This also reduces the amount of repetive code that existed earlier within rot_vector. 
+fn quat_rot_vec(quat: &ArrayView1<f64>, vec: &ArrayView1<f64>, mut rvec: ArrayViewMut1<f64>){
+    let q02 = 2.0_f64 * quat[0];
+    //(q_0^2 - ||q||^2)
+    let q02_m_nq = quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+    let dot_prod2 = 2.0_f64 * (quat[1] * vec[0] + quat[2] * vec[1] + quat[3] * vec[2]);
+    let mut cross_prod = Array1::<f64>::zeros((3).f());
+
+    cross_prod[0] = -quat[3] * vec[1] + quat[2] * vec[2];
+    cross_prod[1] = quat[3] * vec[0] - quat[1] * vec[2];
+    cross_prod[2] = -quat[2] * vec[0] + quat[1] * vec[1];
+
+    rvec[0] = vec[0] * q02_m_nq + cross_prod[0] * q02 + quat[1] * dot_prod2;
+    rvec[1] = vec[1] * q02_m_nq + cross_prod[1] * q02 + quat[2] * dot_prod2;
+    rvec[2] = vec[2] * q02_m_nq + cross_prod[2] * q02 + quat[3] * dot_prod2;  
+}

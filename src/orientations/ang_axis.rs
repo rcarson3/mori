@@ -14,11 +14,12 @@
 //    limitations under the License.
 
 use super::*;
+use std::cmp;
 
 ///A structure that holds an array of axis-angle representation of a rotation
 #[derive(Clone, Debug)]
 pub struct AngAxis{
-    pub ori: Array2<f64>,
+    ori: Array2<f64>,
 }
 ///A structure that holds an array of compact axis-angle representation of a rotation
 #[derive(Clone, Debug)]
@@ -34,7 +35,7 @@ impl AngAxis{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))) in {angaxis[3] = 1.0_f64});
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))) in {angaxis[2] = 1.0_f64});
 
         AngAxis{
             ori,
@@ -237,13 +238,15 @@ impl RotVector for AngAxis{
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
 
-        assert!( (nelems == rnelems) | (rnelems == 1), 
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
         "The number of elements in the vector field must be equal to the number of elements in the
-        Axis-angle representation structure, or their must only be one element in Axis-angle representation. There are
+        Axis-angle representation structure, or their must only be one element in Axis-angle representation. The final case is
+        that there must only be one element in the vector field. There are
         currently {} elements in vector and {} elements in Axis-angle representation",
         nelems, rnelems);
 
-        let mut rvec = Array2::<f64>::zeros((3, nelems).f());
+        let mnelems = cmp::max(rnelems, nelems);
+        let mut rvec = Array2::<f64>::zeros((3, mnelems).f());
 
         //We need to see if we have more than one Axis-angle representation that we're multiplying by
         if rnelems == nelems {
@@ -251,36 +254,21 @@ impl RotVector for AngAxis{
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref ang_axis (self.ori.axis_iter(Axis(1))) in {
-                let (sin_theta, cos_theta) = ang_axis[3].sin_cos();
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (ang_axis[0] * vec[0] + ang_axis[1] * vec[1] + ang_axis[2] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -ang_axis[2] * vec[1] + ang_axis[1] * vec[2];
-                cross_prod[1] = ang_axis[2] * vec[0] - ang_axis[0] * vec[1];
-                cross_prod[2] = -ang_axis[1] * vec[0] + ang_axis[0] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + ang_axis[0] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + ang_axis[1] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + ang_axis[2] * dp_mcos;    
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);    
             });
-        } else{
+        } else if rnelems == 1{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
-            let ang_axis = self.ori_view();
+            let ang_axis = self.ori.subview(Axis(1), 0);
 
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
-                let (sin_theta, cos_theta) = ang_axis[[3, 0]].sin_cos();
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (ang_axis[[0, 0]] * vec[0] + ang_axis[[1, 0]] * vec[1] + ang_axis[[2, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);   
+            });
+        } else {
+            //We just have one vector so perform pretty much the above to get all of our values
+            let vec = vec.subview(Axis(1), 0);
 
-                cross_prod[0] = -ang_axis[[2, 0]] * vec[1] + ang_axis[[1, 0]] * vec[2];
-                cross_prod[1] = ang_axis[[2, 0]] * vec[0] - ang_axis[[0, 0]] * vec[1];
-                cross_prod[2] = -ang_axis[[1, 0]] * vec[0] + ang_axis[[0, 0]] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + ang_axis[[0, 0]] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + ang_axis[[1, 0]] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + ang_axis[[2, 0]] * dp_mcos;    
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {  
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);  
             });
         }//End if-else
         //Now we just need to return the rvec value
@@ -299,20 +287,22 @@ impl RotVector for AngAxis{
 
         let nelems = vec.len_of(Axis(1));
         let rvnelems = rvec.len_of(Axis(1));
-        let rnelems = self.ori.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(1));
+        let mnelems = cmp::max(rnelems, nelems);
 
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
 
-        assert!((nelems == rvnelems),
-        "The number of elements in the unrotated vector field must be equal to the number of elements
-        in the supplied rotated vector field. There are currently {} elements in the unrotated vector
+        assert!((mnelems == rvnelems),
+        "The number of elements in the unrotated vector or axis-angle field must be equal to the number of elements
+        in the supplied rotated vector field. There are currently {} elements in the unrotated vector or axis-angle
         field and {} elements in the rotated vector field", 
-        nelems, rvnelems);
+        mnelems, rvnelems);
 
-        assert!( (nelems == rnelems) | (rnelems == 1), 
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
         "The number of elements in the vector field must be equal to the number of elements in the
-        Axis-angle representation structure, or their must only be one element in Axis-angle representation. There are
+        Axis-angle representation structure, or their must only be one element in Axis-angle representation. The final case is
+        that there must only be one element in the vector field. There are
         currently {} elements in vector and {} elements in Axis-angle representation",
         nelems, rnelems);
 
@@ -322,36 +312,21 @@ impl RotVector for AngAxis{
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref ang_axis (self.ori.axis_iter(Axis(1))) in {
-                let (sin_theta, cos_theta) = ang_axis[3].sin_cos();
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (ang_axis[0] * vec[0] + ang_axis[1] * vec[1] + ang_axis[2] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -ang_axis[2] * vec[1] + ang_axis[1] * vec[2];
-                cross_prod[1] = ang_axis[2] * vec[0] - ang_axis[0] * vec[1];
-                cross_prod[2] = -ang_axis[1] * vec[0] + ang_axis[0] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + ang_axis[0] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + ang_axis[1] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + ang_axis[2] * dp_mcos;    
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);   
             });
-        } else{
+        } else if rnelems == 1{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
-            let ang_axis = self.ori_view();
+            let ang_axis = self.ori.subview(Axis(1), 0);
 
             azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
-                let (sin_theta, cos_theta) = ang_axis[[3, 0]].sin_cos();
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (ang_axis[[0, 0]] * vec[0] + ang_axis[[1, 0]] * vec[1] + ang_axis[[2, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);
+            });
+        } else{
+            //We just have one vector so perform pretty much the above to get all of our values
+            let vec = vec.subview(Axis(1), 0);
 
-                cross_prod[0] = -ang_axis[[2, 0]] * vec[1] + ang_axis[[1, 0]] * vec[2];
-                cross_prod[1] = ang_axis[[2, 0]] * vec[0] - ang_axis[[0, 0]] * vec[1];
-                cross_prod[2] = -ang_axis[[1, 0]] * vec[0] + ang_axis[[0, 0]] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + ang_axis[[0, 0]] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + ang_axis[[1, 0]] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + ang_axis[[2, 0]] * dp_mcos;    
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {  
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);  
             });
         }//End of if-else
     }//End of rot_vector_mut
@@ -364,7 +339,7 @@ impl RotVector for AngAxis{
     fn rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
 
         let nelems = vec.len_of(Axis(1));
-        let rnelems = self.ori.len_of(Axis(2));
+        let rnelems = self.ori.len_of(Axis(1));
 
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
@@ -381,47 +356,38 @@ impl RotVector for AngAxis{
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
             azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
-
-                let (sin_theta, cos_theta) = ang_axis[3].sin_cos();
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (ang_axis[0] * vec[0] + ang_axis[1] * vec[1] + ang_axis[2] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -ang_axis[2] * vec[1] + ang_axis[1] * vec[2];
-                cross_prod[1] = ang_axis[2] * vec[0] - ang_axis[0] * vec[1];
-                cross_prod[2] = -ang_axis[1] * vec[0] + ang_axis[0] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + ang_axis[0] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + ang_axis[1] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + ang_axis[2] * dp_mcos;
-
+                ang_axis_rot_vec(&ang_axis, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});    
             });
         } else{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
-            let ang_axis = self.ori_view();
+            let ang_axis = self.ori.subview(Axis(1), 0);
 
             azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
-
-                let (sin_theta, cos_theta) = ang_axis[[3, 0]].sin_cos();
-                let min_cos = 1.0_f64 - cos_theta;
-                let dp_mcos = min_cos * (ang_axis[[0, 0]] * vec[0] + ang_axis[[1, 0]] * vec[1] + ang_axis[[2, 0]] * vec[2]);
-                let mut cross_prod = Array1::<f64>::zeros((3).f());
-
-                cross_prod[0] = -ang_axis[[2, 0]] * vec[1] + ang_axis[[1, 0]] * vec[2];
-                cross_prod[1] = ang_axis[[2, 0]] * vec[0] - ang_axis[[0, 0]] * vec[1];
-                cross_prod[2] = -ang_axis[[1, 0]] * vec[0] + ang_axis[[0, 0]] * vec[1];
-
-                rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + ang_axis[[0, 0]] * dp_mcos;
-                rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + ang_axis[[1, 0]] * dp_mcos;
-                rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + ang_axis[[2, 0]] * dp_mcos;
-
+                ang_axis_rot_vec(&ang_axis, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});  
             });
         }//End of if-else
     }//End of rot_vector_inplace
 }//Endo of Impl RotVector
+
+///All of the axis-angle vector rotation operations can be described by using the below series of functions.
+///This also reduces the amount of repetive code that existed earlier within rot_vector. 
+fn ang_axis_rot_vec(ang_axis: &ArrayView1<f64>, vec: &ArrayView1<f64>, mut rvec: ArrayViewMut1<f64>) {
+    let (sin_theta, cos_theta) = ang_axis[3].sin_cos();
+    let min_cos = 1.0_f64 - cos_theta;
+    let dp_mcos = min_cos * (ang_axis[0] * vec[0] + ang_axis[1] * vec[1] + ang_axis[2] * vec[2]);
+    let mut cross_prod = Array1::<f64>::zeros((3).f());
+
+    cross_prod[0] = -ang_axis[2] * vec[1] + ang_axis[1] * vec[2];
+    cross_prod[1] = ang_axis[2] * vec[0] - ang_axis[0] * vec[1];
+    cross_prod[2] = -ang_axis[1] * vec[0] + ang_axis[0] * vec[1];
+
+    rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + ang_axis[0] * dp_mcos;
+    rvec[1] = vec[1] * cos_theta + cross_prod[1] * sin_theta + ang_axis[1] * dp_mcos;
+    rvec[2] = vec[2] * cos_theta + cross_prod[2] * sin_theta + ang_axis[2] * dp_mcos;
+}
 
 impl AngAxisComp{
 

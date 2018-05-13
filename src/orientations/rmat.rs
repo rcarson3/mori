@@ -14,6 +14,7 @@
 //    limitations under the License.
 
 use super::*;
+use std::cmp;
 
 ///A structure that holds an array of rotation/orientation matrices
 #[derive(Clone, Debug)]
@@ -225,9 +226,10 @@ impl RotVector for RMat{
 
     ///rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
     ///given rotation matrices. The newly rotated vectors are then returned. This function requires the
-    ///number of elements in the rotation matrix to be either 1 or nelems where vec has nelems in it.
+    ///number of elements in the rotation matrix to be either 1 or nelems.
+    ///It also requires that the number of elements in the unrotated vector be 1 or nelems.
     ///If this condition is not met the function will error out.
-    ///vec - the vector to be rotated must have dimensions 3xnelems.
+    ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///Output - the rotated vector and has dimensions 3xnelems.
     fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
 
@@ -237,13 +239,15 @@ impl RotVector for RMat{
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
 
-        assert!( (nelems == rnelems) | (rnelems == 1), 
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
         "The number of elements in the vector field must be equal to the number of elements in the
-        Rotation Matix structure, or their must only be one element in Rotation Matrix. There are
+        Rotation Matix structure, or their must only be one element in Rotation Matrix. The final case is
+        that there must only be one element in the vector field. There are
         currently {} elements in vector and {} elements in Rotation Matrix",
         nelems, rnelems);
 
-        let mut rvec = Array2::<f64>::zeros((3, nelems).f());
+        let mnelems = cmp::max(rnelems, nelems);
+        let mut rvec = Array2::<f64>::zeros((3, mnelems).f());
 
         //We need to see if we have more than one rotation matrix that we're multiplying by
         if rnelems == nelems {
@@ -253,12 +257,18 @@ impl RotVector for RMat{
             ref rmat (self.ori.axis_iter(Axis(2))) in {
                 rvec.assign({&rmat.dot(&vec)});
             });
-        } else{
+        }else if rnelems == 1{
             //We just have one rmat so we can multiple that by our vec and get all of our
             //rvec values all at once.
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
             rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
+        }else{
+            //We now need to look at the case where we only have one vector to rotate but several rotation matrices
+            let vec = vec.subview(Axis(1), 0);
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+                rvec.assign({&rmat.dot(&vec)});
+            });
         }//End if-else
         //Now we just need to return the rvec value
         rvec
@@ -267,31 +277,35 @@ impl RotVector for RMat{
     ///rot_vector_mut takes in a 2D array view of a series of vectors and a mutable 2D ArrayView of the 
     ///rotated vector. It then rotates these vectors using the given rotation matrices. The newly rotated
     /// vectors are assigned to the supplied rotated vector, rvec. This function requires the
-    ///number of elements in the rotation matrix to be either 1 or nelems where vec has nelems in it.
-    ///It also requires the number of elements in rvec and vec to be equal.
+    ///number of elements in the rotation matrix to be either 1 or nelems where rvec has nelems in it.
+    ///It also requires that the number of elements in the unrotated vector be 1 or nelems.
     ///If these conditions are not met the function will error out.
-    ///vec - the vector to be rotated must have dimensions 3xnelems.
+    ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///rvec - the rotated vector and has dimensions 3xnelems.
     fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
 
         let nelems = vec.len_of(Axis(1));
         let rvnelems = rvec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(2));
+        let mnelems = cmp::max(rnelems, nelems);
 
         let rows  = vec.len_of(Axis(0));
         assert!((rows == 3), "The number of rows must be 3. The number of rows provided is {}", rows); 
 
-        assert!((nelems == rvnelems),
-        "The number of elements in the unrotated vector field must be equal to the number of elements
+        assert!((mnelems == rvnelems),
+        "The number of elements in the unrotated vector/rotation matrix field must be equal to the number of elements
         in the supplied rotated vector field. There are currently {} elements in the unrotated vector
-        field and {} elements in the rotated vector field", 
-        nelems, rvnelems);
+        field/rotated matrix field and {} elements in the rotated vector field", 
+        mnelems, rvnelems);
 
-        assert!( (nelems == rnelems) | (rnelems == 1), 
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
         "The number of elements in the vector field must be equal to the number of elements in the
-        Rotation Matix structure, or their must only be one element in Rotation Matrix. There are
+        Rotation Matix structure, or their must only be one element in Rotation Matrix. The final case is
+        that there must only be one element in the vector field. There are
         currently {} elements in vector and {} elements in Rotation Matrix",
         nelems, rnelems);
+
+
 
         //We need to see if we have more than one rotation matrix that we're multiplying by
         if rnelems == nelems {
@@ -301,12 +315,18 @@ impl RotVector for RMat{
             ref rmat (self.ori.axis_iter(Axis(2))) in {
                 rvec.assign({&rmat.dot(&vec)});
             });
-        } else{
+        } else if rnelems == 1{
             //We just have one rmat so we can multiple that by our vec and get all of our
             //rvec values all at once.
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
             rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
+        }else{
+            //We now need to look at the case where we only have one vector to rotate but several rotation matrices
+            let vec = vec.subview(Axis(1), 0);
+            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+                rvec.assign({&rmat.dot(&vec)});
+            });
         }//End if-else
     }//End of rot_vector_mut
 
@@ -335,7 +355,7 @@ impl RotVector for RMat{
             //and assigning R*v to the vector.
             azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
                 //A cleaner way needs to exists to perform this operation.
-                let mut rvec = Array2::<f64>::zeros((3, 1).f());
+                let mut rvec = Array1::<f64>::zeros((3).f());
                 rvec.assign({&rmat.dot(&vec)});
                 vec.assign({&rvec});
             });
@@ -346,7 +366,7 @@ impl RotVector for RMat{
             //to use the dot function
             azip!(mut vec (vec.axis_iter_mut(Axis(1))) in{
                 //A cleaner way needs to exists to perform this operation.
-                let mut rvec = Array2::<f64>::zeros((3, 1).f());
+                let mut rvec = Array1::<f64>::zeros((3).f());
                 rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
                 vec.assign({&rvec});
             });
