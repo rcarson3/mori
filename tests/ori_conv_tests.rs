@@ -120,6 +120,27 @@ fn rod2bunge2rod(){
 
 
 #[test]
+fn rod2bunge2rod_inplace(){
+
+    let rod_ori = read_rod_file();
+
+    let rod = RodVec::new_init(rod_ori.clone());
+
+    let bunge = rod.to_bunge();
+
+    let mut rod2 = rod.clone(); 
+
+    bunge.to_rod_vec_inplace(&mut rod2);
+
+    let rod_ori2 = rod2.ori_view();
+
+    let comp = rod_ori.all_close(&rod_ori2, 1e-14);
+
+    assert!(comp);
+}
+
+
+#[test]
 fn rod2quat2rod(){
 
     let rod_ori = read_rod_file();

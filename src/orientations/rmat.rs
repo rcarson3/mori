@@ -219,6 +219,113 @@ impl OriConv for RMat{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
     }//End of to_homochoric
+    ///This operation is done inplace and does not create a new structure
+    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+        let mut ori = bunge.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(2));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        //We need to check the R_33 component to see if it's near 1.0 
+        let tol = f64::sqrt(std::f64::EPSILON);
+
+        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
+                bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
+                bunge[1] = std::f64::consts::FRAC_PI_2 * (1.0_f64 - rmat[[2, 2]]);
+                bunge[2] = 0.0_f64;
+            }else{
+                let eta  = 1.0_f64 / f64::sqrt(1.0_f64 - rmat[[2, 2]] * rmat[[2, 2]]);
+                bunge[0] = f64::atan2(rmat[[2, 0]] * eta, -rmat[[2, 1]] * eta);
+                bunge[1] = rmat[[2, 2]].acos();
+                bunge[2] = f64::atan2(rmat[[0, 2]] * eta, rmat[[1, 2]] * eta);
+            }
+        });
+
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rmat_inplace(&self, rmat: &mut RMat){
+        let mut ori = rmat.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(2));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        ori.assign(&self.ori);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+        let mut ori = ang_axis.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            //The first case is if there is no rotation of axis
+            if phi.abs() < std::f64::EPSILON{
+                angaxis[0] = 0.0_f64;
+                angaxis[1] = 0.0_f64;
+                angaxis[2] = 1.0_f64;
+                angaxis[3] = 0.0_f64;
+            }else{
+                let inv_sin = 1.0_f64 / phi.sin();
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                angaxis[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]);
+                angaxis[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]);
+                angaxis[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]);
+                angaxis[3] = phi;
+            }
+        });
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_ang_axis_comp_inplace(ang_axis_comp);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_rod_vec_inplace(rod_vec);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+        let rod_vec = self.to_rod_vec();
+        rod_vec.to_rod_vec_comp_inplace(rod_vec_comp);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_quat_inplace(&self, quat: &mut Quat){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_quat_inplace(quat);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_homochoric_inplace(homochoric);
+    }
+
+
+
 }//End of Impl Ori_Conv for RMat
 
 ///A series of commonly used operations to rotate vector data by a given rotation

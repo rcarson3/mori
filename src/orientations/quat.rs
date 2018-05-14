@@ -208,6 +208,108 @@ impl OriConv for Quat{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
     }//End of to_homochoric
+    ///This operation is done inplace and does not create a new structure
+    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+        let rmat = self.to_rmat();
+        rmat.to_bunge_inplace(bunge);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rmat_inplace(&self, rmat: &mut RMat){
+        let mut ori = rmat.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(2));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+            rmat[[0, 0]] = qbar + 2.0_f64 * quat[1] * quat[1];
+            rmat[[1, 0]] = 2.0_f64 * (quat[1] * quat[2] + quat[0] * quat[3]);
+            rmat[[2, 0]] = 2.0_f64 * (quat[1] * quat[3] - quat[0] * quat[2]);
+
+            rmat[[0, 1]] = 2.0_f64 * (quat[1] * quat[2] - quat[0] * quat[3]);
+            rmat[[1, 1]] = qbar + 2.0_f64 * quat[2] * quat[2];
+            rmat[[2, 1]] = 2.0_f64 * (quat[2] * quat[3] + quat[0] * quat[1]);
+
+            rmat[[0, 2]] = 2.0_f64 * (quat[1] * quat[3] + quat[0] * quat[2]);
+            rmat[[1, 2]] = 2.0_f64 * (quat[2] * quat[3] - quat[0] * quat[1]);
+            rmat[[2, 2]] = qbar + 2.0_f64 * quat[3] * quat[3];
+        });
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+        let mut ori = ang_axis.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let phi = 2.0_f64 * quat[0].acos();
+            if quat[0].abs() < tol{
+                angaxis[0] = quat[1];
+                angaxis[1] = quat[2];
+                angaxis[2] = quat[3];
+                angaxis[3] = std::f64::consts::PI;
+            }else if phi.abs() < tol{
+                angaxis[2] = 1.0_f64;
+            }else{
+                let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+                angaxis[0] = s * quat[1];
+                angaxis[1] = s * quat[2];
+                angaxis[2] = s * quat[3];
+                angaxis[3] = phi;
+            }
+        });
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_ang_axis_comp_inplace(ang_axis_comp);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_rod_vec_inplace(rod_vec);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+        let rod_vec = self.to_rod_vec();
+        rod_vec.to_rod_vec_comp_inplace(rod_vec_comp);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_quat_inplace(&self, quat: &mut Quat){
+        let mut ori = quat.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        ori.assign(&self.ori);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_homochoric_inplace(homochoric);    
+    }
+
+
 }//End of impl of unit Quaternion
 
 ///A series of commonly used operations to rotate vector data by a given rotation
@@ -215,9 +317,10 @@ impl RotVector for Quat{
 
     ///rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
     ///given Quaternion. The newly rotated vectors are then returned. This function requires the
-    ///number of elements in the Quaternion to be either 1 or nelems where vec has nelems in it.
+    ///number of elements in the Quaternion to be either 1.
+    ///The unrotated vector might also contain either 1 or nelems number of elements.
     ///If this condition is not met the function will error out.
-    ///vec - the vector to be rotated must have dimensions 3xnelems.
+    ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///Output - the rotated vector and has dimensions 3xnelems.
     fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
 
@@ -266,10 +369,11 @@ impl RotVector for Quat{
     ///rot_vector_mut takes in a 2D array view of a series of vectors and a mutable 2D ArrayView of the 
     ///rotated vector. It then rotates these vectors using the given Quaternion. The newly rotated
     /// vectors are assigned to the supplied rotated vector, rvec. This function requires the
-    ///number of elements in the Quaternion to be either 1 or nelems where vec has nelems in it.
+    ///number of elements in the Quaternion to be either 1 or nelems.
+    ///The unrotated vector might also contain either 1 or nelems number of elements.
     ///It also requires the number of elements in rvec and vec to be equal.
     ///If these conditions are not met the function will error out.
-    ///vec - the vector to be rotated must have dimensions 3xnelems.
+    ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///rvec - the rotated vector and has dimensions 3xnelems.
     fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
 

@@ -42,7 +42,7 @@ pub use self::quat::*;
 
 #[derive(Clone, Debug)]
 pub struct Homochoric{
-    ori: Array2<f64>,
+    pub ori: Array2<f64>,
 }
 
 ///A set of generic orientation conversions from one to another orientation representation 
@@ -55,6 +55,14 @@ pub trait OriConv{
     fn to_rod_vec_comp(&self) -> RodVecComp;
     fn to_quat(&self) -> Quat;
     fn to_homochoric(&self) -> Homochoric;
+    fn to_bunge_inplace(&self, bunge: &mut Bunge);
+    fn to_rmat_inplace(&self, rmat: &mut RMat);
+    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis);
+    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp);
+    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec);
+    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp);
+    fn to_quat_inplace(&self, quat: &mut Quat);
+    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric);
 }
 ///A set of methods that allow for rotations of supplied vector data (3x1) dim
 pub trait RotVector{

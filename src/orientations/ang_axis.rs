@@ -219,6 +219,150 @@ impl OriConv for AngAxis{
             ori,
         }
     }//End of to_homochoric
+
+    ///This operation is done inplace and does not create a new structure
+    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+        let rmat = self.to_rmat();
+        rmat.to_bunge_inplace(bunge);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rmat_inplace(&self, rmat: &mut RMat){
+        let mut ori = rmat.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(2));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            let c = angaxis[3].cos();
+            let s = angaxis[3].sin();
+
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+
+            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+
+            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+        }); 
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+        let mut ori = ang_axis.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        ori.assign(&self.ori);
+
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+        let mut ori = ang_axis_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        azip!(mut angaxis_comp (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            angaxis_comp[0] = angaxis[0] * angaxis[3];
+            angaxis_comp[1] = angaxis[1] * angaxis[3];
+            angaxis_comp[2] = angaxis[2] * angaxis[3];
+        });
+
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+        let mut ori = rod_vec.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            rodvec[0] = angaxis[0];
+            rodvec[1] = angaxis[1];
+            rodvec[2] = angaxis[2];
+            rodvec[3] = f64::tan(inv2 * angaxis[3]);
+        });
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+        let rod_vec = self.to_rod_vec();
+        rod_vec.to_rod_vec_comp_inplace(rod_vec_comp);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_quat_inplace(&self, quat: &mut Quat){
+        let mut ori = quat.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv2 = 1.0_f64 / 2.0_f64;
+
+        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            let s = f64::sin(inv2 * angaxis[3]); 
+
+            quat[0] = f64::cos(inv2 * angaxis[3]);
+            quat[1] = s * angaxis[0];
+            quat[2] = s * angaxis[1];
+            quat[3] = s * angaxis[2];
+        });
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let mut ori = homochoric.ori.view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv3  = 1.0_f64 / 3.0_f64;
+        let inv34 = 3.0_f64 / 4.0_f64;
+
+        azip!(mut homoch (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+            let pow_term    = inv34 * (angaxis[3] - angaxis[3].sin()); 
+
+            homoch[0] = angaxis[0];
+            homoch[1] = angaxis[1];
+            homoch[2] = angaxis[2];
+            homoch[3] = pow_term.powf(inv3);
+        });
+    }
+
+
 }//End of Impl OriConv for AngAxis
 
 ///A series of commonly used operations to rotate vector data by a given rotation
@@ -226,9 +370,10 @@ impl RotVector for AngAxis{
 
     ///rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
     ///given Axis-angle representation. The newly rotated vectors are then returned. This function requires the
-    ///number of elements in the Axis-angle representation to be either 1 or nelems where vec has nelems in it.
+    ///number of elements in the Axis-angle representation to be either 1 or nelems.
+    ///The unrotated vector might also contain either 1 or nelems number of elements.
     ///If this condition is not met the function will error out.
-    ///vec - the vector to be rotated must have dimensions 3xnelems.
+    ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///Output - the rotated vector and has dimensions 3xnelems.
     fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
 
@@ -278,10 +423,11 @@ impl RotVector for AngAxis{
     ///rot_vector_mut takes in a 2D array view of a series of vectors and a mutable 2D ArrayView of the 
     ///rotated vector. It then rotates these vectors using the given Axis-angle representation. The newly rotated
     /// vectors are assigned to the supplied rotated vector, rvec. This function requires the
-    ///number of elements in the Axis-angle representation to be either 1 or nelems where vec has nelems in it.
+    ///number of elements in the Axis-angle representation to be either 1 or nelems.
+    ///The unrotated vector might also contain either 1 or nelems number of elements.
     ///It also requires the number of elements in rvec and vec to be equal.
     ///If these conditions are not met the function will error out.
-    ///vec - the vector to be rotated must have dimensions 3xnelems.
+    ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///rvec - the rotated vector and has dimensions 3xnelems.
     fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
 
@@ -525,4 +671,107 @@ impl OriConv for AngAxisComp{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
     }//End of to_homochoric
+
+    ///Converts the compact axis-angle representation over to Bunge angles which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+        let rmat = self.to_rmat();
+        rmat.to_bunge_inplace(bunge);
+    }
+
+    ///Converts the compact axis-angle representation over to a rotation matrix which has the following properties
+    ///shape (3, 3, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn to_rmat_inplace(&self, rmat: &mut RMat){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_rmat_inplace(rmat);
+    }
+
+    ///Converts the compact axis-angle representation over to an angle-axis representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major. 
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+        let mut ori = ang_axis.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                angaxis[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
+                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
+                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
+                angaxis[3] = norm_angaxis;
+            }
+        });
+    }
+
+    ///Returns a clone of the compact axis-angle structure
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+        let mut ori = ang_axis_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        ori.assign(&self.ori);
+
+    }
+
+    ///Converts the compact axis-angle representation over to a Rodrigues vector representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_rod_vec_inplace(rod_vec);
+    }
+
+    ///Converts the compact axis-angle representation over to a compact Rodrigues vector representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+        let rod_vec = self.to_rod_vec();
+        rod_vec.to_rod_vec_comp_inplace(rod_vec_comp);
+    }
+    
+    ///Converts the compact axis-angle representation over to a unit quaternion representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn to_quat_inplace(&self, quat: &mut Quat){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_quat_inplace(quat);
+    }
+
+    ///Converts the compact axis-angle representation over to a homochoric representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_homochoric_inplace(homochoric);
+    }
+
 }//End of Impl OriConv for AngAxisComp

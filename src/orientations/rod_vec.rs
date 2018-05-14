@@ -159,6 +159,85 @@ impl OriConv for RodVec{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
     }//End of to_homochoric
+    ///This operation is done inplace and does not create a new structure
+    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+        let rmat = self.to_rmat();
+        rmat.to_bunge_inplace(bunge);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rmat_inplace(&self, rmat: &mut RMat){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_rmat_inplace(rmat);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+        let mut ori = ang_axis.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+            angaxis[0] = rodvec[0];
+            angaxis[1] = rodvec[1];
+            angaxis[2] = rodvec[2];
+            angaxis[3] = 2.0_f64 * rodvec[3].atan();
+        });
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_ang_axis_comp_inplace(ang_axis_comp);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+        let mut ori = rod_vec.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        ori.assign(&self.ori);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+        let mut ori = rod_vec_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        azip!(mut rodvec_comp (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+            rodvec_comp[0] = rodvec[0] * rodvec[3];
+            rodvec_comp[1] = rodvec[1] * rodvec[3];
+            rodvec_comp[2] = rodvec[2] * rodvec[3];
+        });
+
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_quat_inplace(&self, quat: &mut Quat){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_quat_inplace(quat);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_homochoric_inplace(homochoric);
+    }
+
+
 }//End of impl Ori_Conv of Rodrigues Vector
 
 ///A series of commonly used operations to rotate vector data by a given rotation
@@ -166,9 +245,10 @@ impl RotVector for RodVec{
 
     ///rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
     ///given Rodrigues vectors. The newly rotated vectors are then returned. This function requires the
-    ///number of elements in the Rodrigues vectors to be either 1 or nelems where vec has nelems in it.
+    ///number of elements in the Rodrigues vectors to be either 1 or nelems.
+    ///The unrotated vector might also contain either 1 or nelems number of elements.
     ///If this condition is not met the function will error out.
-    ///vec - the vector to be rotated must have dimensions 3xnelems.
+    ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///Output - the rotated vector and has dimensions 3xnelems.
     fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
 
@@ -218,10 +298,11 @@ impl RotVector for RodVec{
     ///rot_vector_mut takes in a 2D array view of a series of vectors and a mutable 2D ArrayView of the 
     ///rotated vector. It then rotates these vectors using the given Rodrigues vector. The newly rotated
     /// vectors are assigned to the supplied rotated vector, rvec. This function requires the
-    ///number of elements in the Rodrigues vector to be either 1 or nelems where vec has nelems in it.
+    ///number of elements in the Rodrigues vector to be either 1 or nelems.
+    ///The unrotated vector might also contain either 1 or nelems number of elements.
     ///It also requires the number of elements in rvec and vec to be equal.
     ///If these conditions are not met the function will error out.
-    ///vec - the vector to be rotated must have dimensions 3xnelems.
+    ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///rvec - the rotated vector and has dimensions 3xnelems.
     fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
 
@@ -459,4 +540,84 @@ impl OriConv for RodVecComp{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
     }//End of to_homochoric
+    ///This operation is done inplace and does not create a new structure
+    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+        let rmat = self.to_rmat();
+        rmat.to_bunge_inplace(bunge);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rmat_inplace(&self, rmat: &mut RMat){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_rmat_inplace(rmat);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+        let rod_vec = self.to_rod_vec();
+        rod_vec.to_ang_axis_inplace(ang_axis);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_ang_axis_comp_inplace(ang_axis_comp);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+        let mut ori = rod_vec.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+
+        let tol = std::f64::EPSILON;
+
+        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref rodvec_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_rodvec = f64::sqrt({
+                rodvec_comp[0] * rodvec_comp[0] 
+                + rodvec_comp[1] * rodvec_comp[1] 
+                + rodvec_comp[2] * rodvec_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_rodvec.abs() < tol {
+                rodvec[2] = 1.0_f64;
+            }else{
+                let inv_norm_rodvec = 1.0_f64 / norm_rodvec;
+                rodvec[0] = rodvec_comp[0] * inv_norm_rodvec;
+                rodvec[1] = rodvec_comp[1] * inv_norm_rodvec;
+                rodvec[2] = rodvec_comp[2] * inv_norm_rodvec;
+                rodvec[3] = norm_rodvec;
+            }
+        });
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+        let mut ori = rod_vec_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        ori.assign(&self.ori);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_quat_inplace(&self, quat: &mut Quat){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_quat_inplace(quat);
+    }
+    ///This operation is done inplace and does not create a new structure
+    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.to_ang_axis();
+        ang_axis.to_homochoric_inplace(homochoric);
+    }
+
+
 }//End of impl Ori_Conv of Compact Rodrigues Vector 
