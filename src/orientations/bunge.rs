@@ -110,43 +110,6 @@ impl OriConv for Bunge{
     fn to_ang_axis(&self) -> AngAxis{
         let rmat = self.to_rmat();
         rmat.to_ang_axis()
-
-        //This should also work but it doesn't appear to so we're using the above
-        //instead
-        // let nelems = self.ori.len_of(Axis(1));
-        
-        // let mut ori = Array2::<f64>::zeros((4, nelems).f());
-
-        // let inv2 = 1.0_f64/2.0_f64;
-
-        // azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref bunge (self.ori.axis_iter(Axis(1))) in {
-        //     let t       = f64::tan(bunge[1] * inv2);
-        //     let sigma   = inv2 * (bunge[0] + bunge[2]);
-        //     let csigma  = sigma.cos();
-        //     let ssigma  = sigma.sin();
-        //     let delta   = inv2 * (bunge[0] - bunge[2]);
-        //     let tau     = f64::sqrt(t * t + ssigma * ssigma);
-        //     let mut alpha   = 2.0_f64 * f64::atan(tau / csigma);
-        //     let itau = 1.0_f64 / tau;
-        //     let mut p:f64;
-
-        //     //If alpha is greater than pi we need to set p equal to 1 and
-        //     //set alpha equal to 2*pi - alpha. If it isn't then p is set
-        //     //to -1. Afterwards everything else is the same.
-        //     if alpha > std::f64::consts::PI{
-        //         p = 1.0_f64;
-        //         alpha = 2.0_f64 * std::f64::consts::PI - alpha;
-        //     }else{
-        //         p = -1.0_f64;
-        //     }
-
-        //     angaxis[0] = p * itau * t * delta.cos();
-        //     angaxis[1] = p * itau * t * delta.sin();
-        //     angaxis[2] = p * itau * ssigma;
-        //     angaxis[3] = alpha;
-        // });
-
-        // AngAxis::new_init(ori)
     }//End of to_ang_axis
 
     ///Converts the Bunge angles over to a compact angle-axis representation which has the following properties
@@ -154,8 +117,8 @@ impl OriConv for Bunge{
     fn to_ang_axis_comp(&self) -> AngAxisComp{
         //We first convert to a axis-angle representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our axis-angle vector.
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_ang_axis_comp()
+        let rmat = self.to_rmat();
+        rmat.to_ang_axis_comp()
     }//End of to_ang_axis_comp
 
     ///Converts the Bunge angles over to a Rodrigues vector representation which has the following properties
@@ -163,8 +126,8 @@ impl OriConv for Bunge{
     fn to_rod_vec(&self) -> RodVec{
         //We first convert to a axis-angle representation. Then we just need to change the last component
         //of our axis-angle representation to be tan(phi/2) instead of phi
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_rod_vec()
+        let rmat = self.to_rmat();
+        rmat.to_rod_vec()
     }//End of to_rod_vec
 
     ///Converts the Bunge angles over to a compact Rodrigues vector representation which has the following properties
@@ -175,40 +138,15 @@ impl OriConv for Bunge{
         //If we want to be more efficient about this in the future with out as many copies used we can reuse a lot of the code
         //used in the to_ang_axis code. However, we will end up with a lot of similar/repeated code then. We could put that
         //code in a helper function that isn't seen.
-        let rod_vec = self.to_rod_vec();
-        rod_vec.to_rod_vec_comp()
+        let rmat = self.to_rmat();
+        rmat.to_rod_vec_comp()
     }//End of to_rod_vec_comp
 
     ///Converts the Bunge angles over to a unit quaternion representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     fn to_quat(&self) -> Quat{
-
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_quat()
-        //The below should also work but it appears to be following short so
-        //we're going to do the following...
-        // let nelems = self.ori.len_of(Axis(1));
-        
-        // let mut ori = Array2::<f64>::zeros((4, nelems).f());
-        
-        // //This is a constant factor used in the loop.
-        // let inv2 = 1.0_f64/2.0_f64;
-
-        // azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref bunge (self.ori.axis_iter(Axis(1))) in {
-        //     let sigma   = inv2 * (bunge[0] + bunge[2]);
-        //     let delta   = inv2 * (bunge[0] - bunge[2]);
-        //     let c       = f64::cos(inv2 * bunge[1]);
-        //     let s       = f64::sin(inv2 * bunge[1]);
-        //     let q0      = c * sigma.cos();
-        //     let p       = if q0 < 0.0_f64{-1.0_f64} else{1.0_f64};
-
-        //     quat[0] = p * q0;
-        //     quat[1] = -p * s * delta.cos();
-        //     quat[2] = -p * s * delta.sin();
-        //     quat[3] = -p * c * sigma.cos();
-        // });
-
-        // Quat::new_init(ori)           
+        let rmat = self.to_rmat();
+        rmat.to_quat()       
     }//End of to_quat
 
     ///Converts Bunge angles over to a homochoric representation which has the following properties
@@ -271,31 +209,48 @@ impl OriConv for Bunge{
         });
 
     }
+
+    ///Converts the Bunge angles over to an angle-axis representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
         let rmat = self.to_rmat();
         rmat.to_ang_axis_inplace(ang_axis);
     }
+
+    ///Converts the Bunge angles over to a compact angle-axis representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_ang_axis_comp_inplace(ang_axis_comp);
+        let rmat = self.to_rmat();
+        rmat.to_ang_axis_comp_inplace(ang_axis_comp);
     }
+
+    ///Converts the Bunge angles over to a Rodrigues vector representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_rod_vec_inplace(rod_vec);
+        let rmat = self.to_rmat();
+        rmat.to_rod_vec_inplace(rod_vec);
     }
+
+    ///Converts the Bunge angles over to a compact Rodrigues vector representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
-        let rod_vec = self.to_rod_vec();
-        rod_vec.to_rod_vec_comp_inplace(rod_vec_comp);
+        let rmat = self.to_rmat();
+        rmat.to_rod_vec_comp_inplace(rod_vec_comp);
     }
+
+    ///Converts the Bunge angles over to a unit quaternion representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_quat_inplace(&self, quat: &mut Quat){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_quat_inplace(quat);
+        let rmat = self.to_rmat();
+        rmat.to_quat_inplace(quat);
     }
+    ///Converts Bunge angles over to a homochoric representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
         let ang_axis = self.to_ang_axis();

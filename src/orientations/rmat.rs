@@ -125,10 +125,7 @@ impl OriConv for RMat{
             let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
             //The first case is if there is no rotation of axis
             if phi.abs() < std::f64::EPSILON{
-                angaxis[0] = 0.0_f64;
-                angaxis[1] = 0.0_f64;
                 angaxis[2] = 1.0_f64;
-                angaxis[3] = 0.0_f64;
             }else{
                 let inv_sin = 1.0_f64 / phi.sin();
                 //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
@@ -145,72 +142,123 @@ impl OriConv for RMat{
     ///Converts the rotation matrix over to a compact angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     fn to_ang_axis_comp(&self) -> AngAxisComp{
-        //We first convert to a axis-angle representation. Then we scale our normal vector by our the rotation
-        //angle which is the fourth component of our axis-angle vector.
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_ang_axis_comp()
+        let nelems = self.ori.len_of(Axis(2));
+
+        let mut ori = Array2::<f64>::zeros((3, nelems).f());
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            if phi.abs() > std::f64::EPSILON{
+                let inv_sin = 1.0_f64 / phi.sin();
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                angaxis[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]) * phi;
+                angaxis[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]) * phi;
+                angaxis[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]) * phi;
+            }
+        });
+
+        AngAxisComp::new_init(ori)
     }//End of to_ang_axis_comp
 
     ///Converts the rotation matrix over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     fn to_rod_vec(&self) -> RodVec{
-        //We first convert to a axis-angle representation. Then we just need to change the last component
-        //of our axis-angle representation to be tan(phi/2) instead of phi
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_rod_vec()
+        let nelems = self.ori.len_of(Axis(2));
+
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            //The first case is if there is no rotation of axis
+            if phi.abs() < std::f64::EPSILON{
+                rod_vec[2] = 1.0_f64;
+            }else{
+                let inv_sin = 1.0_f64 / phi.sin();
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                rod_vec[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]);
+                rod_vec[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]);
+                rod_vec[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]);
+                rod_vec[3] = f64::tan(phi * inv2);
+            }
+        });
+
+        RodVec::new_init(ori)
     }//End of to_rod_vec
 
     ///Converts the rotation matrix over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     fn to_rod_vec_comp(&self) -> RodVecComp{
-        //We first convert to a Rodrigues vector representation. Then we scale our normal vector by our the rotation
-        //angle which is the fourth component of our axis-angle vector.
-        //If we want to be more efficient about this in the future with out as many copies used we can reuse a lot of the code
-        //used in the to_ang_axis code. However, we will end up with a lot of similar/repeated code then. We could put that
-        //code in a helper function that isn't seen.
-        let rod_vec = self.to_rod_vec();
-        rod_vec.to_rod_vec_comp()
+        let nelems = self.ori.len_of(Axis(2));
+
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            //The first case is if there is no rotation of axis
+            if phi.abs() > std::f64::EPSILON{
+                let inv_sin = 1.0_f64 / phi.sin();
+                let tan2 = f64::tan(phi * inv2);
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                rod_vec[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]) * tan2;
+                rod_vec[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]) * tan2;
+                rod_vec[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]) * tan2;
+            }
+        });
+
+        RodVecComp::new_init(ori)
     }//End of to_rod_vec_comp
 
     ///Converts the rotation matrix over to a unit quaternion representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     fn to_quat(&self) -> Quat{
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_quat()
-        //The below should work but it doesn't...
-        // let nelems = self.ori.len_of(Axis(2));
+        let nelems = self.ori.len_of(Axis(2));
 
-        // let mut ori = Array2::<f64>::zeros((4, nelems).f());
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        // let inv2 = 1.0_f64/2.0_f64;
+        let inv2 = 1.0_f64/2.0_f64;
 
-        // azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
-        //     let q0 = inv2 * f64::sqrt(1.0_f64 + rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]]);
-        //     let mut q1 = inv2 * f64::sqrt(1.0_f64 + rmat[[0, 0]] - rmat[[1, 1]] - rmat[[2, 2]]);
-        //     let mut q2 = inv2 * f64::sqrt(1.0_f64 - rmat[[0, 0]] + rmat[[1, 1]] - rmat[[2, 2]]);
-        //     let mut q3 = inv2 * f64::sqrt(1.0_f64 - rmat[[0, 0]] - rmat[[1, 1]] + rmat[[2, 2]]);
+        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            let mut angaxis = Array1::<f64>::zeros((4).f());
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            //The first case is if there is no rotation of axis
+            if phi.abs() < std::f64::EPSILON{
+                angaxis[2] = 1.0_f64;
+            }else{
+                let inv_sin = 1.0_f64 / phi.sin();
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                angaxis[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]);
+                angaxis[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]);
+                angaxis[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]);
+                angaxis[3] = phi;
+            }
 
-        //     // if rmat[[1, 2]] > rmat[[2, 1]]{
-        //         q1 *= f64::signum(rmat[[2, 1]] - rmat[[1, 2]]);
-        //     // }
-        //     // if rmat[[2, 0]] > rmat[[0, 2]]{
-        //         q2 *= f64::signum(rmat[[0, 2]] - rmat[[2, 0]]);
-        //     // }
-        //     // if rmat[[0, 1]] > rmat[[1, 0]]{
-        //         q3 *= f64::signum(rmat[[1, 0]] - rmat[[0, 1]]);
-        //     // }
+            let s = f64::sin(inv2 * angaxis[3]); 
 
-        //     //We need to normalize our quaternion when we store it.
-        //     let inv_norm = 1.0_f64 / f64::sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-        //     //Once the inv_norm is calculated we apply it to each individual component of our unit
-        //     //quaternion and obtain our 
-        //     quat[0] = q0 * inv_norm;
-        //     quat[1] = q1 * inv_norm;
-        //     quat[2] = q2 * inv_norm;
-        //     quat[3] = q3 * inv_norm;
-        // });
-        // 
-        // Quat::new_init(ori)
+            quat[0] = f64::cos(inv2 * angaxis[3]);
+            quat[1] = s * angaxis[0];
+            quat[2] = s * angaxis[1];
+            quat[3] = s * angaxis[2];
+        });
+
+        Quat::new_init(ori)
     }//End of to_quat
 
     ///Converts the rotation matrix representation over to a homochoric representation which has the following properties
@@ -219,12 +267,15 @@ impl OriConv for RMat{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
     }//End of to_homochoric
+
+    ///Converts the rotation matrices to the equivalent bunge angles which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_bunge_inplace(&self, bunge: &mut Bunge){
         let mut ori = bunge.ori_view_mut();
 
-        let new_nelem = ori.len_of(Axis(2));
-        let nelem = self.ori.len_of(Axis(1));
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(2));
 
         assert!(new_nelem == nelem, 
         "The number of elements in the original ori field do no match up with the new field.
@@ -248,12 +299,14 @@ impl OriConv for RMat{
         });
 
     }
+
+    ///Returns a copy of the initial rotation matrix data structure
     ///This operation is done inplace and does not create a new structure
     fn to_rmat_inplace(&self, rmat: &mut RMat){
         let mut ori = rmat.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(2));
-        let nelem = self.ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(2));
 
         assert!(new_nelem == nelem, 
         "The number of elements in the original ori field do no match up with the new field.
@@ -262,18 +315,21 @@ impl OriConv for RMat{
 
         ori.assign(&self.ori);
     }
+
+    ///Converts the rotation matrix over to an angle-axis representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+
         let mut ori = ang_axis.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
-        let nelem = self.ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(2));
 
         assert!(new_nelem == nelem, 
         "The number of elements in the original ori field do no match up with the new field.
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
-
 
         let inv2 = 1.0_f64/2.0_f64;
 
@@ -298,25 +354,148 @@ impl OriConv for RMat{
             }
         });
     }
+
+    ///Converts the rotation matrix over to a compact angle-axis representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_ang_axis_comp_inplace(ang_axis_comp);
+
+        let mut ori = ang_axis_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(2));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            if phi.abs() > std::f64::EPSILON{
+                let inv_sin = 1.0_f64 / phi.sin();
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                angaxis[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]) * phi;
+                angaxis[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]) * phi;
+                angaxis[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]) * phi;
+            }
+        });
     }
+
+    ///Converts the rotation matrix over to a Rodrigues vector representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_rod_vec_inplace(rod_vec);
+
+        let mut ori = rod_vec.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(2));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            //The first case is if there is no rotation of axis
+            if phi.abs() < std::f64::EPSILON{
+                rod_vec[2] = 1.0_f64;
+            }else{
+                let inv_sin = 1.0_f64 / phi.sin();
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                rod_vec[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]);
+                rod_vec[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]);
+                rod_vec[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]);
+                rod_vec[3] = f64::tan(phi * inv2);
+            }
+        });
     }
+
+    ///Converts the rotation matrix over to a compact Rodrigues vector representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
-        let rod_vec = self.to_rod_vec();
-        rod_vec.to_rod_vec_comp_inplace(rod_vec_comp);
+
+        let mut ori = rod_vec_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(2));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            //The first case is if there is no rotation of axis
+            if phi.abs() > std::f64::EPSILON{
+                let inv_sin = 1.0_f64 / phi.sin();
+                let tan2 = f64::tan(phi * inv2);
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                rod_vec[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]) * tan2;
+                rod_vec[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]) * tan2;
+                rod_vec[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]) * tan2;
+            }
+        });
     }
     ///This operation is done inplace and does not create a new structure
     fn to_quat_inplace(&self, quat: &mut Quat){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_quat_inplace(quat);
+
+        let mut ori = quat.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(2));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            let mut angaxis = Array1::<f64>::zeros((4).f());
+            //The trace of Rmat
+            let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
+            //This is the angle of rotation about our normal axis.
+            let phi  = f64::acos(inv2 * (tr_r - 1.0_f64));
+            //The first case is if there is no rotation of axis
+            if phi.abs() < std::f64::EPSILON{
+                angaxis[2] = 1.0_f64;
+            }else{
+                let inv_sin = 1.0_f64 / phi.sin();
+                //The first three terms are the axial vector of RMat times (1/(2*sin(phi)))
+                angaxis[0] = inv_sin * inv2 * (rmat[[2, 1]] - rmat[[1, 2]]);
+                angaxis[1] = inv_sin * inv2 * (rmat[[0, 2]] - rmat[[2, 0]]);
+                angaxis[2] = inv_sin * inv2 * (rmat[[1, 0]] - rmat[[0, 1]]);
+                angaxis[3] = phi;
+            }
+
+            let s = f64::sin(inv2 * angaxis[3]); 
+
+            quat[0] = f64::cos(inv2 * angaxis[3]);
+            quat[1] = s * angaxis[0];
+            quat[2] = s * angaxis[1];
+            quat[3] = s * angaxis[2];
+        });
     }
     ///This operation is done inplace and does not create a new structure
     fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){

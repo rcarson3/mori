@@ -173,28 +173,88 @@ impl OriConv for Quat{
     ///Converts the unit quaternion over to a compact angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     fn to_ang_axis_comp(&self) -> AngAxisComp{
-        //We first convert to a axis-angle representation. Then we scale our normal vector by our the rotation
-        //angle which is the fourth component of our axis-angle vector.
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_ang_axis_comp()
+
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((3, nelems).f());
+
+        let tol = std::f64::EPSILON;
+
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let phi = 2.0_f64 * quat[0].acos();
+            if quat[0].abs() < tol{
+                angaxis[0] = quat[1] * std::f64::consts::PI;
+                angaxis[1] = quat[2] * std::f64::consts::PI;
+                angaxis[2] = quat[3] * std::f64::consts::PI;
+            }else{
+                let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+                angaxis[0] = s * quat[1] * phi;
+                angaxis[1] = s * quat[2] * phi;
+                angaxis[2] = s * quat[3] * phi; 
+            }
+        });
+
+        AngAxisComp::new_init(ori)
     }//End of to_ang_axis_comp
 
     ///Converts the unit quaternion over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     fn to_rod_vec(&self) -> RodVec{
-        //We first convert to a axis-angle representation. Then we just need to change the last component
-        //of our axis-angle representation to be tan(phi/2) instead of phi
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_rod_vec()
+
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+
+        let tol = std::f64::EPSILON;
+
+        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let phi = quat[0].acos();
+            if quat[0].abs() < tol{
+                rod_vec[0] = quat[1];
+                rod_vec[1] = quat[2];
+                rod_vec[2] = quat[3];
+                rod_vec[3] = std::f64::INFINITY;
+            }else if phi.abs() < tol{
+                rod_vec[2] = 1.0_f64;
+            }else{
+                let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+                rod_vec[0] = s * quat[1];
+                rod_vec[1] = s * quat[2];
+                rod_vec[2] = s * quat[3];
+                rod_vec[3] = phi.tan();
+            }
+        });
+
+        RodVec::new_init(ori)
     }//End of to_rod_vec
 
     ///Converts the unit quaternion over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     fn to_rod_vec_comp(&self) -> RodVecComp{
-        //We first convert to a Rodrigues vector representation. Then we scale our normal vector by our the rotation
-        //angle which is the fourth component of our axis-angle vector.
-        let rod_vec = self.to_rod_vec();
-        rod_vec.to_rod_vec_comp()
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((3, nelems).f());
+        let tol = std::f64::EPSILON;
+
+        azip!(mut rod_vec_comp (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let tan_phi = f64::tan(quat[0].acos());
+            //This case will not allow for anything to be retrievable later on...
+            if quat[0].abs() < tol{
+                rod_vec_comp[0] = std::f64::INFINITY;
+                rod_vec_comp[1] = std::f64::INFINITY;
+                rod_vec_comp[2] = std::f64::INFINITY;
+            }else{
+                let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+                rod_vec_comp[0] = s * quat[1] * tan_phi;
+                rod_vec_comp[1] = s * quat[2] * tan_phi;
+                rod_vec_comp[2] = s * quat[3] * tan_phi; 
+            }
+        });
+
+        RodVecComp::new_init(ori)
     }//End of to_rod_vec_comp
 
     ///This returns a clone of the original unit quaternion structure
@@ -208,11 +268,55 @@ impl OriConv for Quat{
         let ang_axis = self.to_ang_axis();
         ang_axis.to_homochoric()
     }//End of to_homochoric
+
+    ///Converts the unit quaternion representation over to Bunge angles which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_bunge_inplace(&self, bunge: &mut Bunge){
-        let rmat = self.to_rmat();
-        rmat.to_bunge_inplace(bunge);
+        let mut ori = bunge.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = f64::sqrt(std::f64::EPSILON);
+
+        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let q03 = quat[0] * quat[0] + quat[3] * quat[3];
+            let q12 = quat[1] * quat[1] + quat[2] * quat[2];
+            let xi = f64::sqrt(q03 * q12);
+            //We get to now go through all of the different cases that this might break down into
+            if xi.abs() < tol && q12.abs() < tol {
+                bunge[0] = f64::atan2(-2.0_f64 * quat[0] * quat[3], quat[0] * quat[0] - quat[3] * quat[3]);
+                //All of the other values are zero
+            }else if xi.abs() < tol && q03.abs() < tol{
+                bunge[0] = f64::atan2(2.0_f64 * quat[1] * quat[2], quat[1] * quat[1] - quat[2] * quat[2]);
+                bunge[1] = std::f64::consts::PI;
+                //The other value is zero
+            }else{
+                let inv_xi = 1.0_f64 / xi;
+                //The atan2 terms are pretty long so we're breaking it down into a couple of temp terms
+                let t1 = inv_xi * (quat[1] * quat[3] - quat[0] * quat[2]);
+                let t2 = inv_xi * (-quat[0] * quat[1] - quat[2] * quat[3]);
+                //We can now assign the first two bunge angles
+                bunge[0] = t1.atan2(t2);
+                bunge[1] = f64::atan2(2.0_f64 * xi, q03 - q12);
+                //Once again these terms going into the atan2 term are pretty long
+                let t1 = inv_xi * (quat[0] * quat[2] + quat[1] * quat[3]);
+                let t2 = inv_xi * (quat[2] * quat[3] - quat[0] * quat[1]);
+                //We can finally find the final bunge angle
+                bunge[2] = t1.atan2(t2);
+            }
+        });
+
     }
+
+    ///Converts the unit quaternion representation over to rotation matrix which has the following properties
+    ///shape (3, 3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_rmat_inplace(&self, rmat: &mut RMat){
         let mut ori = rmat.ori_view_mut();
@@ -241,6 +345,9 @@ impl OriConv for Quat{
             rmat[[2, 2]] = qbar + 2.0_f64 * quat[3] * quat[3];
         });
     }
+
+    ///Converts the unit quaternion over to a angle-axis representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
         let mut ori = ang_axis.ori_view_mut();
@@ -274,21 +381,109 @@ impl OriConv for Quat{
             }
         });
     }
+
+    ///Converts the unit quaternion over to a compact angle-axis representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_ang_axis_comp_inplace(ang_axis_comp);
+        let mut ori = ang_axis_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let phi = 2.0_f64 * quat[0].acos();
+            if quat[0].abs() < tol{
+                angaxis[0] = quat[1] * std::f64::consts::PI;
+                angaxis[1] = quat[2] * std::f64::consts::PI;
+                angaxis[2] = quat[3] * std::f64::consts::PI;
+            }else{
+                let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+                angaxis[0] = s * quat[1] * phi;
+                angaxis[1] = s * quat[2] * phi;
+                angaxis[2] = s * quat[3] * phi; 
+            }
+        });
     }
+
+    ///Converts the unit quaternion over to a Rodrigues vector representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_rod_vec_inplace(rod_vec);
+        let mut ori = rod_vec.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let phi = quat[0].acos();
+            if quat[0].abs() < tol{
+                rod_vec[0] = quat[1];
+                rod_vec[1] = quat[2];
+                rod_vec[2] = quat[3];
+                rod_vec[3] = std::f64::INFINITY;
+            }else if phi.abs() < tol{
+                rod_vec[2] = 1.0_f64;
+            }else{
+                let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+                rod_vec[0] = s * quat[1];
+                rod_vec[1] = s * quat[2];
+                rod_vec[2] = s * quat[3];
+                rod_vec[3] = phi.tan();
+            }
+        });
     }
+
+    ///Converts the unit quaternion over to a compact Rodrigues vector representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
-        let rod_vec = self.to_rod_vec();
-        rod_vec.to_rod_vec_comp_inplace(rod_vec_comp);
+        let mut ori = rod_vec_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        azip!(mut rod_vec_comp (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            let tan_phi = f64::tan(quat[0].acos());
+            //This case will not allow for anything to be retrievable later on...
+            if quat[0].abs() < tol{
+                rod_vec_comp[0] = std::f64::INFINITY;
+                rod_vec_comp[1] = std::f64::INFINITY;
+                rod_vec_comp[2] = std::f64::INFINITY;
+            }else{
+                let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+                rod_vec_comp[0] = s * quat[1] * tan_phi;
+                rod_vec_comp[1] = s * quat[2] * tan_phi;
+                rod_vec_comp[2] = s * quat[3] * tan_phi; 
+            }
+        });
     }
+
+    ///This returns a clone of the original unit quaternion structure
     ///This operation is done inplace and does not create a new structure
     fn to_quat_inplace(&self, quat: &mut Quat){
         let mut ori = quat.ori_view_mut();
@@ -303,6 +498,9 @@ impl OriConv for Quat{
 
         ori.assign(&self.ori);
     }
+
+    ///Converts the quaternion representation over to a homochoric representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
         let ang_axis = self.to_ang_axis();
