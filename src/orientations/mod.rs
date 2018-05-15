@@ -21,22 +21,35 @@
 //! Afterwards, all of the other orientations representations can be reached from one of the already existing orientation representations.
 
 use super::*;
-///It holds the necessary tools to create/view an array of Bunge angles. Also, the conversion processes to other orientation representations.
+///It holds the necessary tools to create/view an array of Bunge angles. 
+///Also, the conversion processes to other orientation representations.
 pub mod bunge;
-///It holds the necessary tools to create/view an array of rotation matrices. Also, the conversion processes to other orientation representations.
+///It holds the necessary tools to create/view an array of rotation matrices. 
+///Also, the conversion processes to other orientation representations.
 ///Finally, it holds the tools necessary to rotate matrices and 2nd order tensors.
 pub mod rmat;
-///It holds the necessary tools to create/view an array of axis-angle representations. Also, the conversion processes to other orientation representations.
+///It holds the necessary tools to create/view an array of axis-angle representations. 
+///Also, the conversion processes to other orientation representations.
 pub mod ang_axis;
-///It holds the necessary tools to create/view an array of Rodrigues vectors. Also, the conversion processes to other orientation representations.
+///It holds the necessary tools to create/view an array of Rodrigues vectors. 
+///Also, the conversion processes to other orientation representations.
 pub mod rod_vec;
-///It holds the necessary tools to create/view an array of unit quaterions. Also, the conversion processes to other orientation representations.
+///It holds the necessary tools to create/view an array of compact axis-angle representations. 
+///Also, the conversion processes to other orientation representations.
+pub mod ang_axis_comp;
+///It holds the necessary tools to create/view an array of compact Rodrigues vectors. 
+///Also, the conversion processes to other orientation representations.
+pub mod rod_vec_comp;
+///It holds the necessary tools to create/view an array of unit quaterions.
+///Also, the conversion processes to other orientation representations.
 pub mod quat;
 
 pub use self::bunge::*;
 pub use self::rmat::*;
 pub use self::ang_axis::*;
+pub use self::ang_axis_comp::*;
 pub use self::rod_vec::*;
+pub use self::rod_vec_comp::*;
 pub use self::quat::*;
 
 

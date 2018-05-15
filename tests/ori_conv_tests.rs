@@ -176,6 +176,44 @@ fn rmat2bunge2rmat(){
 }
 
 #[test]
+fn rmat2angaxis2rmat(){
+
+    let rod_ori = read_rod_file();
+
+    let rod = RodVec::new_init(rod_ori.clone());
+
+    let rmat = rod.to_rmat();
+    let ang_axis = rmat.to_ang_axis();
+    let rmat2 = ang_axis.to_rmat();
+
+    let rmat_ori = rmat.ori_view();
+    let rmat_ori2 = rmat2.ori_view();
+
+    let comp = rmat_ori.all_close(&rmat_ori2, 1e-14);
+
+    assert!(comp);
+}
+
+#[test]
+fn rmat2angaxiscomp2rmat(){
+
+    let rod_ori = read_rod_file();
+
+    let rod = RodVec::new_init(rod_ori.clone());
+
+    let rmat = rod.to_rmat();
+    let ang_axis_comp = rmat.to_ang_axis_comp();
+    let rmat2 = ang_axis_comp.to_rmat();
+
+    let rmat_ori = rmat.ori_view();
+    let rmat_ori2 = rmat2.ori_view();
+
+    let comp = rmat_ori.all_close(&rmat_ori2, 1e-14);
+
+    assert!(comp);
+}
+
+#[test]
 fn quat2bunge2quat(){
 
     let rod_ori = read_rod_file();
@@ -209,6 +247,44 @@ fn quat2rmat2quat(){
     let quat_ori2 = quat2.ori_view();
 
     let comp = quat_ori.all_close(&quat_ori2, 1e-14);
+
+    assert!(comp);
+}
+
+#[test]
+fn quat2angaxiscomp2quat(){
+
+    let rod_ori = read_rod_file();
+
+    let rod = RodVec::new_init(rod_ori.clone());
+
+    let quat = rod.to_quat();
+    let ang_axis_comp = quat.to_ang_axis_comp();
+    let quat2 = ang_axis_comp.to_quat();
+
+    let quat_ori = quat.ori_view();
+    let quat_ori2 = quat2.ori_view();
+
+    let comp = quat_ori.all_close(&quat_ori2, 1e-14);
+
+    assert!(comp);
+}
+
+#[test]
+fn angaxis2bunge2angaxis(){
+
+    let rod_ori = read_rod_file();
+
+    let rod = RodVec::new_init(rod_ori.clone());
+
+    let ang_axis = rod.to_ang_axis();
+    let bunge = ang_axis.to_bunge();
+    let ang_axis2 = bunge.to_ang_axis();
+
+    let angaxis_ori = ang_axis.ori_view();
+    let angaxis_ori2 = ang_axis2.ori_view();
+
+    let comp = angaxis_ori.all_close(&angaxis_ori2, 1e-14);
 
     assert!(comp);
 }
