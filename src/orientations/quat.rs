@@ -65,6 +65,33 @@ impl Quat{
     pub fn ori_view_mut(&mut self) -> ArrayViewMut2<f64>{
         self.ori.view_mut()
     }
+
+    ///Returns a new Quat that is equal to the conjugate/inverse of the unit quaternion which is simply the negative
+    ///of the vector portions of the unit quaternion.
+    pub fn conjugate(&self) -> Quat{
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+        
+        azip!(mut quat_c (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            quat_c[0] = quat[0];
+            quat_c[1] = -1.0_f64 * quat[1];
+            quat_c[2] = -1.0_f64 * quat[2];
+            quat_c[3] = -1.0_f64 * quat[3];
+        });
+
+        Quat::new_init(ori)
+    }
+
+    ///Performs in place the conjugate/inverse of the unit quaternion which is simply the negative
+    ///of the vector portions of the unit quaternion.
+    pub fn conjugate_inplace(&mut self){
+        azip!(mut quat_c (self.ori.axis_iter_mut(Axis(1))) in {
+            quat_c[1] *= -1.0_f64;
+            quat_c[2] *= -1.0_f64;
+            quat_c[3] *= -1.0_f64;
+        });
+    }
 }//End of Impl of Quat
 
 ///The orientation conversions of a series of unit quaternions to a number of varying different orientation

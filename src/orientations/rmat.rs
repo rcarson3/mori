@@ -70,6 +70,36 @@ impl RMat{
     pub fn ori_view_mut(&mut self) -> ArrayViewMut3<f64>{
         self.ori.view_mut()
     }
+
+    ///Returns the  transpose of the rotation matrix.
+    pub fn transpose(&self) -> RMat{
+        let nelems = self.ori.len_of(Axis(2));
+        let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
+        
+        azip!(mut rmat_t (ori.axis_iter_mut(Axis(2))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            rmat_t.assign(&rmat.t());
+        });
+
+        RMat::new_init(ori)
+    }
+
+    //Returns the transpose of the rotation matrix in place
+    pub fn transpose_inplace(&mut self){
+        azip!(mut rmat (self.ori.axis_iter_mut(Axis(2))) in {
+            let mut tmp = rmat[[0, 1]];
+            rmat[[0, 1]] = rmat[[1, 0]];
+            rmat[[1, 0]] = tmp;
+            
+            tmp = rmat[[0, 2]];
+            rmat[[0, 2]] = rmat[[2, 0]];
+            rmat[[2, 0]] = tmp;
+
+            tmp = rmat[[1, 2]];
+            rmat[[1, 2]] = rmat[[2, 1]];
+            rmat[[2, 1]] = tmp;
+        });
+    }
+
 }//End of RMat impl
 
 ///The orientation conversions of a series of rotation matrices to a number of varying different orientation

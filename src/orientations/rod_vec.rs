@@ -66,6 +66,35 @@ impl RodVec{
     pub fn ori_view_mut(&mut self) -> ArrayViewMut2<f64>{
         self.ori.view_mut()
     }
+
+    ///Returns a new RodVec that is equal to the equivalent of transposing a rotation matrix.
+    ///It turns out this is simply the negative of the normal vector due to the vector being formed
+    ///from an axial vector of the rotation matrix --> Rmat^T = -Rx where Rx is the axial vector.
+    pub fn transpose(&self) -> RodVec{
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+        
+        azip!(mut rod_vec_t (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+            rod_vec_t[0] = -1.0_f64 * rod_vec[0];
+            rod_vec_t[1] = -1.0_f64 * rod_vec[1];
+            rod_vec_t[2] = -1.0_f64 * rod_vec[2];
+            rod_vec_t[3] = rod_vec[3];
+        });
+
+        RodVec::new_init(ori)
+    }
+
+    ///Performs the equivalent of transposing a rotation matrix on the internal orientations.
+    ///It turns out this is simply the negative of the normal vector due to the vector being formed
+    ///from an axial vector of the rotation matrix --> Rmat^T = -Rx where Rx is the axial vector.
+    pub fn transpose_inplace(&mut self){
+        azip!(mut rod_vec_t (self.ori.axis_iter_mut(Axis(1))) in {
+            rod_vec_t[0] *= -1.0_f64;
+            rod_vec_t[1] *= -1.0_f64;
+            rod_vec_t[2] *= -1.0_f64;
+        });
+    }
 }//End of Impl of RodVec
 
 ///The orientation conversions of a series of Rodrigues vectors to a number of varying different orientation

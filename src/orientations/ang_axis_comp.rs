@@ -65,6 +65,24 @@ impl AngAxisComp{
     pub fn ori_view_mut(&mut self) -> ArrayViewMut2<f64>{
         self.ori.view_mut()
     }
+
+    ///Returns a new AngAxisComp that is equal to the equivalent of transposing a rotation matrix.
+    ///It turns out this is simply the negative of the normal vector due to the vector being formed
+    ///from an axial vector of the rotation matrix --> Rmat^T = -Rx where Rx is the axial vector.
+    pub fn transpose(&self) -> AngAxisComp{
+        let nelems = self.ori.len_of(Axis(1));
+        let mut ori = Array2::<f64>::zeros((3, nelems).f());
+        ori.assign(&(-1.0 * &self.ori));
+
+        AngAxisComp::new_init(ori)
+    }
+
+    ///Performs the equivalent of transposing a rotation matrix on the internal orientations.
+    ///It turns out this is simply the negative of the normal vector due to the vector being formed
+    ///from an axial vector of the rotation matrix --> Rmat^T = -Rx where Rx is the axial vector.
+    pub fn transpose_inplace(&mut self){
+        self.ori.mapv_inplace(|x| {-1.0_f64 * x});
+    }
 }//End of AngAxisComp impl
 
 ///The orientation conversions of a series of compact axis-angle representation to a number of varying different orientation
