@@ -69,7 +69,7 @@ impl RodVec{
 
     ///Returns a new RodVec that is equal to the equivalent of transposing a rotation matrix.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
-    ///from an axial vector of the rotation matrix --> Rmat^T = -Rx where Rx is the axial vector.
+    ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
     pub fn transpose(&self) -> RodVec{
         let nelems = self.ori.len_of(Axis(1));
 
@@ -87,7 +87,7 @@ impl RodVec{
 
     ///Performs the equivalent of transposing a rotation matrix on the internal orientations.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
-    ///from an axial vector of the rotation matrix --> Rmat^T = -Rx where Rx is the axial vector.
+    ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
     pub fn transpose_inplace(&mut self){
         azip!(mut rod_vec_t (self.ori.axis_iter_mut(Axis(1))) in {
             rod_vec_t[0] *= -1.0_f64;

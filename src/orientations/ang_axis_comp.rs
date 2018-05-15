@@ -68,7 +68,7 @@ impl AngAxisComp{
 
     ///Returns a new AngAxisComp that is equal to the equivalent of transposing a rotation matrix.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
-    ///from an axial vector of the rotation matrix --> Rmat^T = -Rx where Rx is the axial vector.
+    ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
     pub fn transpose(&self) -> AngAxisComp{
         let nelems = self.ori.len_of(Axis(1));
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
@@ -79,7 +79,7 @@ impl AngAxisComp{
 
     ///Performs the equivalent of transposing a rotation matrix on the internal orientations.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
-    ///from an axial vector of the rotation matrix --> Rmat^T = -Rx where Rx is the axial vector.
+    ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
     pub fn transpose_inplace(&mut self){
         self.ori.mapv_inplace(|x| {-1.0_f64 * x});
     }
