@@ -81,18 +81,151 @@ impl Quat{
         });
 
         Quat::new_init(ori)
-    }
+    }//End of conjugate
 
     ///Performs in place the conjugate/inverse of the unit quaternion which is simply the negative
-    ///of the vector portions of the unit quaternion.
+    ///of the vector portions of the unit quaternion. The inverse is said to be the same here because
+    ///for unit quaternions that is the case. If we didn't have unit quaternions that would not be the case.
     pub fn conjugate_inplace(&mut self){
         azip!(mut quat_c (self.ori.axis_iter_mut(Axis(1))) in {
             quat_c[1] *= -1.0_f64;
             quat_c[2] *= -1.0_f64;
             quat_c[3] *= -1.0_f64;
         });
-    }
+    }//End of conjugate_inplace
+
+    ///Performs a quaternion product operation between two unit quaternions ->
+    ///q_new = (q_01*q_02 - q_1.q_2, q_01*q_2 +q_02*q_1 + q_1 x q_2) where q_1 and q_2 are the vector components of the
+    ///quaternion. The result returned is a new quaternion. Also, if the conjugate/inverse is used for the first quaternion
+    ///one can obtain the relative orientation/rotation between quaternion 1 and quaternion 2.
+    ///This function requires the number of elements in self to be either 1.
+    ///The quat2 field might also contain either 1 or nelems number of elements.
+    ///If this condition is not met the function will error out.
+    ///quat2 - the quaternion to be rotated must have dimensions 4xnelems or 4x1.
+    ///Output - the quaternion product and has dimensions 4xnelems.
+    pub fn product(&self, quat2: &Quat) -> Quat{
+        
+        let ori_quat2 = quat2.ori_view();
+        let nelems = ori_quat2.len_of(Axis(1));
+        let rnelems = self.ori.len_of(Axis(1));
+
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
+        "The number of elements in quat2 field must be equal to the number of elements in the
+        Quaternion structure, or their must only be one element in Quaternion. The final case is
+        that there must only be one element in the quat2 field. There are
+        currently {} elements in quat2 and {} elements in Quaternion",
+        nelems, rnelems);
+
+        let mnelems = cmp::max(rnelems, nelems);
+        let mut quat_prod = Array2::<f64>::zeros((4, mnelems).f());
+
+                //We need to see if we have more than one Quaternion that we're multiplying by
+        if rnelems == nelems {
+            //The rotations here can be given by reference 1  equation 24 in the README.
+            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))), 
+            ref quat1 (self.ori.axis_iter(Axis(1))) in {
+                quat_product(&quat1, &quat2, quat_prod);     
+            });
+        } else if rnelems == 1{
+            //We just have one Quaternion so perform pretty much the above to get all of our values
+            let quat1 = self.ori.subview(Axis(1), 0);
+
+            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))) in {  
+                quat_product(&quat1, &quat2, quat_prod);      
+            });
+        }else{
+            //We just have one vector so perform pretty much the above to get all of our values
+            let quat2 = ori_quat2.subview(Axis(1), 0);
+
+            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat1 (self.ori.axis_iter(Axis(1))) in {  
+                quat_product(&quat1, &quat2, quat_prod);  
+            });
+        }//End of if-else
+
+        Quat::new_init(quat_prod)
+    }//End of product
+
+    ///Performs a quaternion product operation between two unit quaternions ->
+    ///q_new = (q_01*q_02 - q_1.q_2, q_01*q_2 +q_02*q_1 + q_1 x q_2) where q_1 and q_2 are the vector components of the
+    ///quaternion. The result is stored in a supplied quaternion field. 
+    ///Also, if the conjugate/inverse is used for the first quaternion
+    ///one can obtain the relative orientation/rotation between quaternion 1 and quaternion 2.
+    ///This function requires the number of elements in self to be either 1.
+    ///The quat2 field might also contain either 1 or nelems number of elements.
+    ///The quat_prod field must contain nelems number of elements.
+    ///If this condition is not met the function will error out.
+    ///quat2 - the quaternion to be rotated must have dimensions 4xnelems or 4x1.
+    ///quat_prod - the quaternion product that was supplied that we are going to store data in must have dims 4xnelems
+    pub fn product_mut(&self, quat2: &Quat, quat_prod: &mut Quat){
+        
+        let ori_quat2 = quat2.ori_view();
+        let mut ori_quat_prod = quat_prod.ori_view_mut();
+
+        let nelems = ori_quat2.len_of(Axis(1));
+        let rvnelems = ori_quat_prod.len_of(Axis(1));
+        let rnelems = self.ori.len_of(Axis(1));
+
+        let mnelems = cmp::max(rnelems, nelems);
+
+        assert!((mnelems == rvnelems),
+        "The number of elements in the quat2 or Quaternion field must be equal to the number of elements
+        in the supplied quat_prod field. There are currently {} elements in the quat2 or Quaternion
+        field and {} elements in the quat_prod field", 
+        mnelems, rvnelems);
+
+        assert!( (nelems == rnelems) | (rnelems == 1) | (nelems == 1), 
+        "The number of elements in quat2 field must be equal to the number of elements in the
+        Quaternion structure, or their must only be one element in Quaternion. The final case is
+        that there must only be one element in the quat2 field. There are
+        currently {} elements in quat2 and {} elements in Quaternion",
+        nelems, rnelems);
+
+        //We need to see if we have more than one Quaternion that we're multiplying by
+        if rnelems == nelems {
+            //The rotations here can be given by reference 1  equation 23 in the README.
+            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))), 
+            ref quat1 (self.ori.axis_iter(Axis(1))) in {
+                quat_product(&quat1, &quat2, quat_prod);     
+            });
+        } else if rnelems == 1{
+            //We just have one Quaternion so perform pretty much the above to get all of our values
+            let quat1 = self.ori.subview(Axis(1), 0);
+
+            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))) in {  
+                quat_product(&quat1, &quat2, quat_prod);      
+            });
+        }else{
+            //We just have one vector so perform pretty much the above to get all of our values
+            let quat2 = ori_quat2.subview(Axis(1), 0);
+
+            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat1 (self.ori.axis_iter(Axis(1))) in {  
+                quat_product(&quat1, &quat2, quat_prod);  
+            });
+        }//End of if-else
+    }//End of product_mut
+
 }//End of Impl of Quat
+
+//A helper function for Impl of Quat
+
+///All of the quaternion product operations can be described by using the below series of functions.
+///q_new = (q_01*q_02 - q_1.q_2, q_01*q_2 +q_02*q_1 + q_1 x q_2) where q_1 and q_2 are the vector components of the
+///quaternion. 
+fn quat_product(quat1: &ArrayView1<f64>, quat2: &ArrayView1<f64>, mut quat_prod: ArrayViewMut1<f64>){
+    let q01q02 = quat1[0] * quat2[0];
+    //(q_0^2 - ||q||^2)
+    let q01q02_qd = q01q02 - (quat1[1] * quat2[1] + quat1[2] * quat2[2] + quat1[3] * quat2[3]);
+    let mut cross_prod = Array1::<f64>::zeros((3).f());
+
+    cross_prod[0] = -quat1[3] * quat2[2] + quat1[2] * quat2[3];
+    cross_prod[1] = quat1[3] * quat2[1] - quat1[1] * quat2[3];
+    cross_prod[2] = -quat1[2] * quat2[1] + quat1[1] * quat2[2];
+
+    quat_prod[0] = q01q02_qd;
+    quat_prod[1] = quat1[0] * quat2[1] + quat2[0] * quat1[1] + cross_prod[0];
+    quat_prod[2] = quat1[0] * quat2[2] + quat2[0] * quat1[2] + cross_prod[0];
+    quat_prod[3] = quat1[0] * quat2[3] + quat2[0] * quat1[3] + cross_prod[0];
+}//End of quat_product
 
 ///The orientation conversions of a series of unit quaternions to a number of varying different orientation
 ///representations commonly used in material orientation processing. 
@@ -686,6 +819,8 @@ impl RotVector for Quat{
         }//End of if-else
     }//End of rot_vector_inplace
 }//Endo of Impl RotVector
+
+//A helper function for Impl RotVector for Quat
 
 ///All of the quaternion vector rotation operations can be described by using the below series of functions.
 ///This also reduces the amount of repetive code that existed earlier within rot_vector. 
