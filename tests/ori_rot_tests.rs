@@ -448,6 +448,58 @@ fn rodvec_rot_vec_mut(){
 }
 
 #[test]
+fn par_rodvec_rot_vec_mut(){
+    //First test does the rmat and vec have same number of elems
+    let nori = 1551;
+    let ori = read_rod_file();
+
+    let rod = RodVec::new_init(ori.clone());
+
+    let rmat = rod.to_rmat();
+    
+    let vec = Array2::<f64>::ones((3, nori).f());
+    let mut rvec_rmat = vec.clone();
+    let mut rvec_rodvec = vec.clone();
+
+    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    rod.par_rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
+
+    let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
+
+    assert!(comp);
+    //Second test does the rmat has 1 elem and vec has nelems
+    let rmat = RMat::new(1);
+    let rod  = RodVec::new(1);
+    let mut rvec_rmat = vec.clone();
+    let mut rvec_rodvec = vec.clone();
+
+    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    rod.par_rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
+
+    let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
+
+    assert!(comp);
+
+    //Last case does the rmat has nelems and vec has 1 elem
+    let rmat = RMat::new(nori);
+    let rod_vec = RodVec::new(nori);
+
+    let mut rvec_rmat = Array2::<f64>::zeros((3, nori).f());
+    let mut rvec_rodvec = Array2::<f64>::zeros((3, nori).f());
+
+    let mut vec = Array2::<f64>::zeros((3,1).f());
+
+    vec[[0,0]] = 1.0_f64;
+
+    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    rod_vec.par_rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
+
+    let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
+
+    assert!(comp);
+}
+
+#[test]
 fn rodvec_rot_vec_inplace(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;

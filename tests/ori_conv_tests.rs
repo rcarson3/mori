@@ -118,6 +118,22 @@ fn rod2bunge2rod(){
     assert!(comp);
 }
 
+#[test]
+fn par_rod2bunge2rod(){
+
+    let rod_ori = read_rod_file();
+
+    let rod = RodVec::new_init(rod_ori.clone());
+
+    let bunge = rod.par_to_bunge();
+    let rod2 = bunge.par_to_rod_vec();
+    let rod_ori2 = rod2.ori_view();
+
+    let comp = rod_ori.all_close(&rod_ori2, 1e-14);
+
+    assert!(comp);
+}
+
 
 #[test]
 fn rod2bunge2rod_inplace(){
@@ -139,6 +155,25 @@ fn rod2bunge2rod_inplace(){
     assert!(comp);
 }
 
+#[test]
+fn par_rod2bunge2rod_inplace(){
+
+    let rod_ori = read_rod_file();
+
+    let rod = RodVec::new_init(rod_ori.clone());
+
+    let bunge = rod.par_to_bunge();
+
+    let mut rod2 = rod.clone(); 
+
+    bunge.par_to_rod_vec_inplace(&mut rod2);
+
+    let rod_ori2 = rod2.ori_view();
+
+    let comp = rod_ori.all_close(&rod_ori2, 1e-14);
+
+    assert!(comp);
+}
 
 #[test]
 fn rod2quat2rod(){

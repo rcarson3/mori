@@ -654,3 +654,594 @@ impl OriConv for AngAxisComp{
     }
 
 }//End of Impl OriConv for AngAxisComp
+
+impl AngAxisComp{
+
+    ///Returns a new AngAxisComp that is equal to the equivalent of transposing a rotation matrix.
+    ///It turns out this is simply the negative of the normal vector due to the vector being formed
+    ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
+    pub fn par_transpose(&self) -> AngAxisComp{
+        let nelems = self.ori.len_of(Axis(1));
+        let mut ori = Array2::<f64>::zeros((3, nelems).f());
+        ori.assign(&(-1.0 * &self.ori));
+
+        AngAxisComp::new_init(ori)
+    }
+
+    ///Performs the equivalent of transposing a rotation matrix on the internal orientations.
+    ///It turns out this is simply the negative of the normal vector due to the vector being formed
+    ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
+    pub fn par_transpose_inplace(&mut self){
+        self.ori.mapv_inplace(|x| {-1.0_f64 * x});
+    }
+}//End of AngAxisComp impl
+
+///The orientation conversions of a series of compact axis-angle representation to a number of varying different orientation
+///representations commonly used in material orientation processing. 
+impl ParallelOriConv for AngAxisComp{
+    ///Converts the compact axis-angle representation over to a rotation matrix which has the following properties
+    ///shape (3, 3, nelems), memory order = fortran/column major.
+    fn par_to_rmat(&self) -> RMat{
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
+
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let mut angaxis = Array1::<f64>::zeros((4).f());
+            
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                angaxis[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
+                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
+                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
+                angaxis[3] = norm_angaxis;
+            }
+
+
+            let c = angaxis[3].cos();
+            let s = angaxis[3].sin();
+
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+
+            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+
+            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+        });
+
+        RMat::new_init(ori) 
+    }//End of par_to_rmat
+
+    ///Converts the compact axis-angle representation over to Bunge angles which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
+    fn par_to_bunge(&self) -> Bunge{
+
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((3, nelems).f());
+
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let mut angaxis = Array1::<f64>::zeros((4).f());
+            
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                angaxis[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
+                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
+                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
+                angaxis[3] = norm_angaxis;
+            }
+
+
+            let c = angaxis[3].cos();
+            let s = angaxis[3].sin();
+
+            let mut rmat = Array2::<f64>::zeros((3, 3).f());
+
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+
+            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+
+            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+
+            if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
+                bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
+                bunge[1] = std::f64::consts::FRAC_PI_2 * (1.0_f64 - rmat[[2, 2]]);
+                bunge[2] = 0.0_f64;
+            }else{
+                let eta  = 1.0_f64 / f64::sqrt(1.0_f64 - rmat[[2, 2]] * rmat[[2, 2]]);
+                bunge[0] = f64::atan2(rmat[[2, 0]] * eta, -rmat[[2, 1]] * eta);
+                bunge[1] = rmat[[2, 2]].acos();
+                bunge[2] = f64::atan2(rmat[[0, 2]] * eta, rmat[[1, 2]] * eta);
+            }
+        });
+
+        Bunge::new_init(ori)
+    }//End of par_to_bunge
+
+    ///Converts the compact axis-angle representation over to an angle-axis representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    fn par_to_ang_axis(&self) -> AngAxis{
+        //We first convert to a axis-angle representation. Then we scale our normal vector by our the rotation
+        //angle which is the fourth component of our axis-angle vector.
+        // let ang_axis = self.par_to_ang_axis();
+
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                angaxis[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
+                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
+                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
+                angaxis[3] = norm_angaxis;
+            }
+        });
+
+        AngAxis::new_init(ori)
+    }
+
+    ///Returns a clone of the compact axis-angle structure
+    fn par_to_ang_axis_comp(&self) -> AngAxisComp{
+        self.clone()
+    }//End of par_to_ang_axis_comp
+
+    ///Converts the compact axis-angle representation over to a Rodrigues vector representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    fn par_to_rod_vec(&self) -> RodVec{
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+
+        let tol = std::f64::EPSILON;
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                rod_vec[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                let tan2 = f64::tan(inv2 * norm_angaxis);
+
+                rod_vec[0] = angaxis_comp[0] * inv_norm_angaxis;
+                rod_vec[1] = angaxis_comp[1] * inv_norm_angaxis;
+                rod_vec[2] = angaxis_comp[2] * inv_norm_angaxis;
+                rod_vec[3] = tan2;
+            }
+        });
+
+        RodVec::new_init(ori)
+    }//End of par_to_rod_vec
+
+    ///Converts the compact axis-angle representation over to a compact Rodrigues vector representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
+    fn par_to_rod_vec_comp(&self) -> RodVecComp{
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((3, nelems).f());
+
+        let inv2 = 1.0_f64/2.0_f64;
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+
+            if norm_angaxis.abs() > tol{ 
+
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                let tan2 = f64::tan(inv2 * norm_angaxis);
+
+                rod_vec[0] = angaxis_comp[0] * inv_norm_angaxis * tan2;
+                rod_vec[1] = angaxis_comp[1] * inv_norm_angaxis * tan2;
+                rod_vec[2] = angaxis_comp[2] * inv_norm_angaxis * tan2;
+            }
+        });
+
+        RodVecComp::new_init(ori)
+    }//End of par_to_rod_vec_comp
+
+    ///Converts the compact axis-angle representation over to a unit quaternion representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    fn par_to_quat(&self) -> Quat{
+        let nelems = self.ori.len_of(Axis(1));
+
+        let mut ori = Array2::<f64>::zeros((4, nelems).f());
+
+        let inv2 = 1.0_f64 / 2.0_f64;
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+
+            let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+            let s = f64::sin(inv2 * norm_angaxis); 
+
+            if norm_angaxis.abs() > tol{
+                quat[0] = f64::cos(inv2 * norm_angaxis);
+                quat[1] = s * angaxis_comp[0] * inv_norm_angaxis;
+                quat[2] = s * angaxis_comp[1] * inv_norm_angaxis;
+                quat[3] = s * angaxis_comp[2] * inv_norm_angaxis;
+            }else{
+                quat[0] = 1.0_f64;
+            }
+        });
+
+        Quat::new_init(ori)
+    }//End of par_to_quat
+
+    ///Converts the compact axis-angle representation over to a homochoric representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    fn par_to_homochoric(&self) ->Homochoric{
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric()
+    }//End of par_to_homochoric
+
+    ///Converts the compact axis-angle representation over to Bunge angles which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn par_to_bunge_inplace(&self, bunge: &mut Bunge){
+        let mut ori = bunge.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let mut angaxis = Array1::<f64>::zeros((4).f());
+            
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                angaxis[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
+                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
+                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
+                angaxis[3] = norm_angaxis;
+            }
+
+
+            let c = angaxis[3].cos();
+            let s = angaxis[3].sin();
+
+            let mut rmat = Array2::<f64>::zeros((3, 3).f());
+
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+
+            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+
+            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+
+            if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
+                bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
+                bunge[1] = std::f64::consts::FRAC_PI_2 * (1.0_f64 - rmat[[2, 2]]);
+                bunge[2] = 0.0_f64;
+            }else{
+                let eta  = 1.0_f64 / f64::sqrt(1.0_f64 - rmat[[2, 2]] * rmat[[2, 2]]);
+                bunge[0] = f64::atan2(rmat[[2, 0]] * eta, -rmat[[2, 1]] * eta);
+                bunge[1] = rmat[[2, 2]].acos();
+                bunge[2] = f64::atan2(rmat[[0, 2]] * eta, rmat[[1, 2]] * eta);
+            }
+        });
+    }
+
+    ///Converts the compact axis-angle representation over to a rotation matrix which has the following properties
+    ///shape (3, 3, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn par_to_rmat_inplace(&self, rmat: &mut RMat){
+        let mut ori = rmat.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(2));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let mut angaxis = Array1::<f64>::zeros((4).f());
+            
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                angaxis[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
+                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
+                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
+                angaxis[3] = norm_angaxis;
+            }
+
+
+            let c = angaxis[3].cos();
+            let s = angaxis[3].sin();
+
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+
+            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+
+            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+        }); 
+    }
+
+    ///Converts the compact axis-angle representation over to an angle-axis representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major. 
+    ///This operation is done inplace and does not create a new structure
+    fn par_to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+        let mut ori = ang_axis.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                angaxis[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
+                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
+                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
+                angaxis[3] = norm_angaxis;
+            }
+        });
+    }
+
+    ///Returns a clone of the compact axis-angle structure
+    ///This operation is done inplace and does not create a new structure
+    fn par_to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+        let mut ori = ang_axis_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        ori.assign(&self.ori);
+
+    }
+
+    ///Converts the compact axis-angle representation over to a Rodrigues vector representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn par_to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+        let mut ori = rod_vec.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let tol = std::f64::EPSILON;
+
+        let inv2 = 1.0_f64/2.0_f64;
+
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+            //If we follow the same convention that we use with quaternions for cases with no rotation
+            //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
+            if norm_angaxis.abs() < tol{
+                rod_vec[2] = 1.0_f64; 
+            }else{
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                let tan2 = f64::tan(inv2 * norm_angaxis);
+
+                rod_vec[0] = angaxis_comp[0] * inv_norm_angaxis;
+                rod_vec[1] = angaxis_comp[1] * inv_norm_angaxis;
+                rod_vec[2] = angaxis_comp[2] * inv_norm_angaxis;
+                rod_vec[3] = tan2;
+            }
+        });
+    }
+
+    ///Converts the compact axis-angle representation over to a compact Rodrigues vector representation which has the following properties
+    ///shape (3, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn par_to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+        let mut ori = rod_vec_comp.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv2 = 1.0_f64/2.0_f64;
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+
+            if norm_angaxis.abs() > tol{ 
+
+                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+                let tan2 = f64::tan(inv2 * norm_angaxis);
+
+                rod_vec[0] = angaxis_comp[0] * inv_norm_angaxis * tan2;
+                rod_vec[1] = angaxis_comp[1] * inv_norm_angaxis * tan2;
+                rod_vec[2] = angaxis_comp[2] * inv_norm_angaxis * tan2;
+            }
+        });
+    }
+    
+    ///Converts the compact axis-angle representation over to a unit quaternion representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn par_to_quat_inplace(&self, quat: &mut Quat){
+        let mut ori = quat.ori_view_mut();
+
+        let new_nelem = ori.len_of(Axis(1));
+        let nelem = self.ori.len_of(Axis(1));
+
+        assert!(new_nelem == nelem, 
+        "The number of elements in the original ori field do no match up with the new field.
+        The old field had {} elements, and the new field has {} elements",
+        nelem, new_nelem);
+
+        let inv2 = 1.0_f64 / 2.0_f64;
+        let tol = std::f64::EPSILON;
+
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+            let norm_angaxis = f64::sqrt({
+                angaxis_comp[0] * angaxis_comp[0] 
+                + angaxis_comp[1] * angaxis_comp[1] 
+                + angaxis_comp[2] * angaxis_comp[2]
+                });
+
+            let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+
+            let s = f64::sin(inv2 * norm_angaxis); 
+
+            quat[0] = f64::cos(inv2 * norm_angaxis);
+
+            if norm_angaxis.abs() > tol{
+                quat[1] = s * angaxis_comp[0] * inv_norm_angaxis;
+                quat[2] = s * angaxis_comp[1] * inv_norm_angaxis;
+                quat[3] = s * angaxis_comp[2] * inv_norm_angaxis;
+            }
+        });
+    }
+
+    ///Converts the compact axis-angle representation over to a homochoric representation which has the following properties
+    ///shape (4, nelems), memory order = fortran/column major.
+    ///This operation is done inplace and does not create a new structure
+    fn par_to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric_inplace(homochoric);
+    }
+
+}//End of Impl OriConv for AngAxisComp

@@ -39,12 +39,12 @@
 //! <b id="f2">[2]:</b>[↩](#a2) Barton N R and Dawson P R 2001 A methodology for determining average lattice orientation and its application to the characterization of grain substructure Metall. Mater. Trans. A 32 1967–75
 //!
 //! <b id="f3">[3]:</b>[↩](#a3) Glez J C and Driver J 2001 Orientation distribution analysis in deformed grains J. Appl. Cryst. 34 280–8
-
 #[macro_use]
 extern crate ndarray;
+#[macro_use]
+extern crate ndarray_parallel;
+
 use ndarray::prelude::*;
 
 ///Contains orientation conversions from one to another, rotations of vectors and tensor data, and finally relative orientation operations
 pub mod orientations;
-//Future module for us to use. This will require us to use 
-//pub mod par_orientations;

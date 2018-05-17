@@ -90,4 +90,34 @@ pub trait RotTensor{
     fn rot_tensor_inplace(&self, tensor: ArrayViewMut3<f64>);
 }
 
-
+///A set of generic orientation conversions from one to another orientation representation 
+pub trait ParallelOriConv{
+    fn par_to_bunge(&self) -> Bunge;
+    fn par_to_rmat(&self) -> RMat;
+    fn par_to_ang_axis(&self) -> AngAxis;
+    fn par_to_ang_axis_comp(&self) -> AngAxisComp;
+    fn par_to_rod_vec(&self) -> RodVec;
+    fn par_to_rod_vec_comp(&self) -> RodVecComp;
+    fn par_to_quat(&self) -> Quat;
+    fn par_to_homochoric(&self) -> Homochoric;
+    fn par_to_bunge_inplace(&self, bunge: &mut Bunge);
+    fn par_to_rmat_inplace(&self, rmat: &mut RMat);
+    fn par_to_ang_axis_inplace(&self, ang_axis: &mut AngAxis);
+    fn par_to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp);
+    fn par_to_rod_vec_inplace(&self, rod_vec: &mut RodVec);
+    fn par_to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp);
+    fn par_to_quat_inplace(&self, quat: &mut Quat);
+    fn par_to_homochoric_inplace(&self, homochoric: &mut Homochoric);
+}
+///A set of methods that allow for rotations of supplied vector data (3x1) dim
+pub trait ParallelRotVector{
+    fn par_rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>;
+    fn par_rot_vector_mut(&self, vec: ArrayView2<f64>, rvec: ArrayViewMut2<f64>);
+    fn par_rot_vector_inplace(&self, vec: ArrayViewMut2<f64>);
+}
+///A set of methods that allow for rotations of supplied 2nd order tensor data (3x3) dim
+pub trait ParallelRotTensor{
+    fn par_rot_tensor(&self, tensor: ArrayView3<f64>) -> Array3<f64>;
+    fn par_rot_tensor_mut(&self, tensor: ArrayView3<f64>, rtensor: ArrayViewMut3<f64>);
+    fn par_rot_tensor_inplace(&self, tensor: ArrayViewMut3<f64>);
+}
