@@ -69,7 +69,7 @@ impl AngAxisComp{
     ///Returns a new AngAxisComp that is equal to the equivalent of transposing a rotation matrix.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
     ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
-    pub fn transpose(&self) -> AngAxisComp{
+    pub fn par_transpose(&self) -> AngAxisComp{
         let nelems = self.ori.len_of(Axis(1));
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
         ori.assign(&(-1.0 * &self.ori));
@@ -80,24 +80,24 @@ impl AngAxisComp{
     ///Performs the equivalent of transposing a rotation matrix on the internal orientations.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
     ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
-    pub fn transpose_inplace(&mut self){
+    pub fn par_transpose_inplace(&mut self){
         self.ori.mapv_inplace(|x| {-1.0_f64 * x});
     }
 }//End of AngAxisComp impl
 
 ///The orientation conversions of a series of compact axis-angle representation to a number of varying different orientation
 ///representations commonly used in material orientation processing. 
-impl OriConv for AngAxisComp{
+impl ParallelOriConv for AngAxisComp{
     ///Converts the compact axis-angle representation over to a rotation matrix which has the following properties
     ///shape (3, 3, nelems), memory order = fortran/column major.
-    fn to_rmat(&self) -> RMat{
+    fn par_to_rmat(&self) -> RMat{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             
             let norm_angaxis = f64::sqrt({
@@ -136,11 +136,11 @@ impl OriConv for AngAxisComp{
         });
 
         RMat::new_init(ori) 
-    }//End of to_rmat
+    }//End of par_to_rmat
 
     ///Converts the compact axis-angle representation over to Bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_bunge(&self) -> Bunge{
+    fn par_to_bunge(&self) -> Bunge{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -148,7 +148,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             
             let norm_angaxis = f64::sqrt({
@@ -200,14 +200,14 @@ impl OriConv for AngAxisComp{
         });
 
         Bunge::new_init(ori)
-    }//End of to_bunge
+    }//End of par_to_bunge
 
     ///Converts the compact axis-angle representation over to an angle-axis representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_ang_axis(&self) -> AngAxis{
+    fn par_to_ang_axis(&self) -> AngAxis{
         //We first convert to a axis-angle representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our axis-angle vector.
-        // let ang_axis = self.to_ang_axis();
+        // let ang_axis = self.par_to_ang_axis();
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -215,7 +215,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -239,13 +239,13 @@ impl OriConv for AngAxisComp{
     }
 
     ///Returns a clone of the compact axis-angle structure
-    fn to_ang_axis_comp(&self) -> AngAxisComp{
+    fn par_to_ang_axis_comp(&self) -> AngAxisComp{
         self.clone()
-    }//End of to_ang_axis_comp
+    }//End of par_to_ang_axis_comp
 
     ///Converts the compact axis-angle representation over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_rod_vec(&self) -> RodVec{
+    fn par_to_rod_vec(&self) -> RodVec{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
@@ -254,7 +254,7 @@ impl OriConv for AngAxisComp{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -277,11 +277,11 @@ impl OriConv for AngAxisComp{
         });
 
         RodVec::new_init(ori)
-    }//End of to_rod_vec
+    }//End of par_to_rod_vec
 
     ///Converts the compact axis-angle representation over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_rod_vec_comp(&self) -> RodVecComp{
+    fn par_to_rod_vec_comp(&self) -> RodVecComp{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
@@ -289,7 +289,7 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64/2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -309,11 +309,11 @@ impl OriConv for AngAxisComp{
         });
 
         RodVecComp::new_init(ori)
-    }//End of to_rod_vec_comp
+    }//End of par_to_rod_vec_comp
 
     ///Converts the compact axis-angle representation over to a unit quaternion representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_quat(&self) -> Quat{
+    fn par_to_quat(&self) -> Quat{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
@@ -321,7 +321,7 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64 / 2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -343,19 +343,19 @@ impl OriConv for AngAxisComp{
         });
 
         Quat::new_init(ori)
-    }//End of to_quat
+    }//End of par_to_quat
 
     ///Converts the compact axis-angle representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_homochoric(&self) ->Homochoric{
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_homochoric()
-    }//End of to_homochoric
+    fn par_to_homochoric(&self) ->Homochoric{
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric()
+    }//End of par_to_homochoric
 
     ///Converts the compact axis-angle representation over to Bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+    fn par_to_bunge_inplace(&self, bunge: &mut Bunge){
         let mut ori = bunge.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -368,7 +368,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             
             let norm_angaxis = f64::sqrt({
@@ -423,7 +423,7 @@ impl OriConv for AngAxisComp{
     ///Converts the compact axis-angle representation over to a rotation matrix which has the following properties
     ///shape (3, 3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rmat_inplace(&self, rmat: &mut RMat){
+    fn par_to_rmat_inplace(&self, rmat: &mut RMat){
         let mut ori = rmat.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(2));
@@ -436,7 +436,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             
             let norm_angaxis = f64::sqrt({
@@ -478,7 +478,7 @@ impl OriConv for AngAxisComp{
     ///Converts the compact axis-angle representation over to an angle-axis representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major. 
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+    fn par_to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
         let mut ori = ang_axis.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -491,7 +491,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -514,7 +514,7 @@ impl OriConv for AngAxisComp{
 
     ///Returns a clone of the compact axis-angle structure
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+    fn par_to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
         let mut ori = ang_axis_comp.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -532,7 +532,7 @@ impl OriConv for AngAxisComp{
     ///Converts the compact axis-angle representation over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+    fn par_to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
         let mut ori = rod_vec.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -547,7 +547,7 @@ impl OriConv for AngAxisComp{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -573,7 +573,7 @@ impl OriConv for AngAxisComp{
     ///Converts the compact axis-angle representation over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+    fn par_to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
         let mut ori = rod_vec_comp.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -587,7 +587,7 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64/2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -610,7 +610,7 @@ impl OriConv for AngAxisComp{
     ///Converts the compact axis-angle representation over to a unit quaternion representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_quat_inplace(&self, quat: &mut Quat){
+    fn par_to_quat_inplace(&self, quat: &mut Quat){
         let mut ori = quat.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -624,7 +624,7 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64 / 2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -648,9 +648,9 @@ impl OriConv for AngAxisComp{
     ///Converts the compact axis-angle representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_homochoric_inplace(homochoric);
+    fn par_to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric_inplace(homochoric);
     }
 
 }//End of Impl OriConv for AngAxisComp

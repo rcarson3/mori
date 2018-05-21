@@ -68,12 +68,12 @@ impl Quat{
 
     ///Returns a new Quat that is equal to the conjugate/inverse of the unit quaternion which is simply the negative
     ///of the vector portions of the unit quaternion.
-    pub fn conjugate(&self) -> Quat{
+    pub fn par_conjugate(&self) -> Quat{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
         
-        azip!(mut quat_c (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut quat_c (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             quat_c[0] = quat[0];
             quat_c[1] = -1.0_f64 * quat[1];
             quat_c[2] = -1.0_f64 * quat[2];
@@ -86,8 +86,8 @@ impl Quat{
     ///Performs in place the conjugate/inverse of the unit quaternion which is simply the negative
     ///of the vector portions of the unit quaternion. The inverse is said to be the same here because
     ///for unit quaternions that is the case. If we didn't have unit quaternions that would not be the case.
-    pub fn conjugate_inplace(&mut self){
-        azip!(mut quat_c (self.ori.axis_iter_mut(Axis(1))) in {
+    pub fn par_conjugate_inplace(&mut self){
+        par_azip!(mut quat_c (self.ori.axis_iter_mut(Axis(1))) in {
             quat_c[1] *= -1.0_f64;
             quat_c[2] *= -1.0_f64;
             quat_c[3] *= -1.0_f64;
@@ -103,7 +103,7 @@ impl Quat{
     ///If this condition is not met the function will error out.
     ///quat2 - the quaternion to be rotated must have dimensions 4xnelems or 4x1.
     ///Output - the quaternion product and has dimensions 4xnelems.
-    pub fn product(&self, quat2: &Quat) -> Quat{
+    pub fn par_product(&self, quat2: &Quat) -> Quat{
         
         let ori_quat2 = quat2.ori_view();
         let nelems = ori_quat2.len_of(Axis(1));
@@ -122,7 +122,7 @@ impl Quat{
                 //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
-            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))), 
+            par_azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))), 
             ref quat1 (self.ori.axis_iter(Axis(1))) in {
                 quat_product(&quat1, &quat2, quat_prod);     
             });
@@ -130,14 +130,14 @@ impl Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat1 = self.ori.subview(Axis(1), 0);
 
-            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))) in {  
+            par_azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))) in {  
                 quat_product(&quat1, &quat2, quat_prod);      
             });
         }else{
             //We just have one vector so perform pretty much the above to get all of our values
             let quat2 = ori_quat2.subview(Axis(1), 0);
 
-            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat1 (self.ori.axis_iter(Axis(1))) in {  
+            par_azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat1 (self.ori.axis_iter(Axis(1))) in {  
                 quat_product(&quat1, &quat2, quat_prod);  
             });
         }//End of if-else
@@ -156,7 +156,7 @@ impl Quat{
     ///If this condition is not met the function will error out.
     ///quat2 - the quaternion to be rotated must have dimensions 4xnelems or 4x1.
     ///quat_prod - the quaternion product that was supplied that we are going to store data in must have dims 4xnelems
-    pub fn product_mut(&self, quat2: &Quat, quat_prod: &mut Quat){
+    pub fn par_product_mut(&self, quat2: &Quat, quat_prod: &mut Quat){
         
         let ori_quat2 = quat2.ori_view();
         let mut ori_quat_prod = quat_prod.ori_view_mut();
@@ -183,7 +183,7 @@ impl Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 23 in the README.
-            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))), 
+            par_azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))), 
             ref quat1 (self.ori.axis_iter(Axis(1))) in {
                 quat_product(&quat1, &quat2, quat_prod);     
             });
@@ -191,14 +191,14 @@ impl Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat1 = self.ori.subview(Axis(1), 0);
 
-            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))) in {  
+            par_azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))) in {  
                 quat_product(&quat1, &quat2, quat_prod);      
             });
         }else{
             //We just have one vector so perform pretty much the above to get all of our values
             let quat2 = ori_quat2.subview(Axis(1), 0);
 
-            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat1 (self.ori.axis_iter(Axis(1))) in {  
+            par_azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat1 (self.ori.axis_iter(Axis(1))) in {  
                 quat_product(&quat1, &quat2, quat_prod);  
             });
         }//End of if-else
@@ -229,10 +229,10 @@ fn quat_product(quat1: &ArrayView1<f64>, quat2: &ArrayView1<f64>, mut quat_prod:
 
 ///The orientation conversions of a series of unit quaternions to a number of varying different orientation
 ///representations commonly used in material orientation processing. 
-impl OriConv for Quat{
+impl ParallelOriConv for Quat{
     ///Converts the unit quaternion representation over to Bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_bunge(&self) -> Bunge{
+    fn par_to_bunge(&self) -> Bunge{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -240,7 +240,7 @@ impl OriConv for Quat{
 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let q03 = quat[0] * quat[0] + quat[3] * quat[3];
             let q12 = quat[1] * quat[1] + quat[2] * quat[2];
             let xi = f64::sqrt(q03 * q12);
@@ -269,17 +269,17 @@ impl OriConv for Quat{
         });
 
         Bunge::new_init(ori)
-    }//End of to_bunge
+    }//End of par_to_bunge
 
     ///Converts the unit quaternion representation over to rotation matrix which has the following properties
     ///shape (3, 3, nelems), memory order = fortran/column major.
-    fn to_rmat(&self) -> RMat{
+    fn par_to_rmat(&self) -> RMat{
 
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
             rmat[[0, 0]] = qbar + 2.0_f64 * quat[1] * quat[1];
@@ -296,11 +296,11 @@ impl OriConv for Quat{
         });
 
         RMat::new_init(ori)
-    }//End of to_rmat
+    }//End of par_to_rmat
 
     ///Converts the unit quaternion representation over to angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_ang_axis(&self) -> AngAxis{
+    fn par_to_ang_axis(&self) -> AngAxis{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -308,7 +308,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1];
@@ -328,11 +328,11 @@ impl OriConv for Quat{
         });
 
         AngAxis::new_init(ori)
-    }//End of to_ang_axis
+    }//End of par_to_ang_axis
 
     ///Converts the unit quaternion over to a compact angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_ang_axis_comp(&self) -> AngAxisComp{
+    fn par_to_ang_axis_comp(&self) -> AngAxisComp{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -340,7 +340,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1] * std::f64::consts::PI;
@@ -356,11 +356,11 @@ impl OriConv for Quat{
         });
 
         AngAxisComp::new_init(ori)
-    }//End of to_ang_axis_comp
+    }//End of par_to_ang_axis_comp
 
     ///Converts the unit quaternion over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_rod_vec(&self) -> RodVec{
+    fn par_to_rod_vec(&self) -> RodVec{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -368,7 +368,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let phi = quat[0].acos();
             if quat[0].abs() < tol{
                 rod_vec[0] = quat[1];
@@ -388,17 +388,17 @@ impl OriConv for Quat{
         });
 
         RodVec::new_init(ori)
-    }//End of to_rod_vec
+    }//End of par_to_rod_vec
 
     ///Converts the unit quaternion over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_rod_vec_comp(&self) -> RodVecComp{
+    fn par_to_rod_vec_comp(&self) -> RodVecComp{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec_comp (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec_comp (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let tan_phi = f64::tan(quat[0].acos());
             //This case will not allow for anything to be retrievable later on...
             if quat[0].abs() < tol{
@@ -415,24 +415,24 @@ impl OriConv for Quat{
         });
 
         RodVecComp::new_init(ori)
-    }//End of to_rod_vec_comp
+    }//End of par_to_rod_vec_comp
 
     ///This returns a clone of the original unit quaternion structure
-    fn to_quat(&self) -> Quat{
+    fn par_to_quat(&self) -> Quat{
         self.clone()
-    }//End of to_quat
+    }//End of par_to_quat
 
     ///Converts the quaternion representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_homochoric(&self) -> Homochoric{
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_homochoric()
-    }//End of to_homochoric
+    fn par_to_homochoric(&self) -> Homochoric{
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric()
+    }//End of par_to_homochoric
 
     ///Converts the unit quaternion representation over to Bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+    fn par_to_bunge_inplace(&self, bunge: &mut Bunge){
         let mut ori = bunge.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -445,7 +445,7 @@ impl OriConv for Quat{
 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let q03 = quat[0] * quat[0] + quat[3] * quat[3];
             let q12 = quat[1] * quat[1] + quat[2] * quat[2];
             let xi = f64::sqrt(q03 * q12);
@@ -478,7 +478,7 @@ impl OriConv for Quat{
     ///Converts the unit quaternion representation over to rotation matrix which has the following properties
     ///shape (3, 3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rmat_inplace(&self, rmat: &mut RMat){
+    fn par_to_rmat_inplace(&self, rmat: &mut RMat){
         let mut ori = rmat.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(2));
@@ -489,7 +489,7 @@ impl OriConv for Quat{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
             rmat[[0, 0]] = qbar + 2.0_f64 * quat[1] * quat[1];
@@ -509,7 +509,7 @@ impl OriConv for Quat{
     ///Converts the unit quaternion over to a angle-axis representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+    fn par_to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
         let mut ori = ang_axis.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -522,7 +522,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1];
@@ -545,7 +545,7 @@ impl OriConv for Quat{
     ///Converts the unit quaternion over to a compact angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+    fn par_to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
         let mut ori = ang_axis_comp.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -558,7 +558,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1] * std::f64::consts::PI;
@@ -577,7 +577,7 @@ impl OriConv for Quat{
     ///Converts the unit quaternion over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+    fn par_to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
         let mut ori = rod_vec.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -590,7 +590,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let phi = quat[0].acos();
             if quat[0].abs() < tol{
                 rod_vec[0] = quat[1];
@@ -613,7 +613,7 @@ impl OriConv for Quat{
     ///Converts the unit quaternion over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+    fn par_to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
         let mut ori = rod_vec_comp.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -626,7 +626,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec_comp (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec_comp (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
             let tan_phi = f64::tan(quat[0].acos());
             //This case will not allow for anything to be retrievable later on...
             if quat[0].abs() < tol{
@@ -645,7 +645,7 @@ impl OriConv for Quat{
 
     ///This returns a clone of the original unit quaternion structure
     ///This operation is done inplace and does not create a new structure
-    fn to_quat_inplace(&self, quat: &mut Quat){
+    fn par_to_quat_inplace(&self, quat: &mut Quat){
         let mut ori = quat.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -662,16 +662,16 @@ impl OriConv for Quat{
     ///Converts the quaternion representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_homochoric_inplace(homochoric);    
+    fn par_to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric_inplace(homochoric);    
     }
 
 
 }//End of impl of unit Quaternion
 
 ///A series of commonly used operations to rotate vector data by a given rotation
-impl RotVector for Quat{
+impl ParallelRotVector for Quat{
 
     ///rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
     ///given Quaternion. The newly rotated vectors are then returned. This function requires the
@@ -680,7 +680,7 @@ impl RotVector for Quat{
     ///If this condition is not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///Output - the rotated vector and has dimensions 3xnelems.
-    fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
+    fn par_rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
 
         let nelems = vec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(1));
@@ -701,7 +701,7 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref quat (self.ori.axis_iter(Axis(1))) in {
                 quat_rot_vec(&quat, &vec, rvec);     
             });
@@ -709,14 +709,14 @@ impl RotVector for Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat = self.ori.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
                 quat_rot_vec(&quat, &vec, rvec);      
             });
         }else{
             //We just have one vector so perform pretty much the above to get all of our values
             let vec = vec.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
         }//End of if-else
@@ -733,7 +733,7 @@ impl RotVector for Quat{
     ///If these conditions are not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///rvec - the rotated vector and has dimensions 3xnelems.
-    fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
+    fn par_rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
 
         let nelems = vec.len_of(Axis(1));
         let rvnelems = rvec.len_of(Axis(1));
@@ -759,7 +759,7 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref quat (self.ori.axis_iter(Axis(1))) in {
                 quat_rot_vec(&quat, &vec, rvec);         
             });
@@ -767,14 +767,14 @@ impl RotVector for Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat = self.ori.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
         } else{
             //We just have one vector so perform pretty much the above to get all of our values
             let vec = vec.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
         }//End of if-else
@@ -785,7 +785,7 @@ impl RotVector for Quat{
     ///number of elements in the Quaternion to be either 1 or nelems where vec has nelems in it.
     ///If this condition is not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems.
-    fn rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
+    fn par_rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
 
         let nelems = vec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(1));
@@ -802,7 +802,7 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            par_azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});    
@@ -811,7 +811,7 @@ impl RotVector for Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat = self.ori.subview(Axis(1), 0);
 
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
+            par_azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f()); 
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});  
@@ -819,6 +819,7 @@ impl RotVector for Quat{
         }//End of if-else
     }//End of rot_vector_inplace
 }//Endo of Impl RotVector
+
 
 //A helper function for Impl RotVector for Quat
 

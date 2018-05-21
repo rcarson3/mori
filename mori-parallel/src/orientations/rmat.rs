@@ -72,11 +72,11 @@ impl RMat{
     }
 
     ///Returns the  transpose of the rotation matrix.
-    pub fn transpose(&self) -> RMat{
+    pub fn par_transpose(&self) -> RMat{
         let nelems = self.ori.len_of(Axis(2));
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
         
-        azip!(mut rmat_t (ori.axis_iter_mut(Axis(2))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut rmat_t (ori.axis_iter_mut(Axis(2))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             rmat_t.assign(&rmat.t());
         });
 
@@ -84,8 +84,8 @@ impl RMat{
     }
 
     //Returns the transpose of the rotation matrix in place
-    pub fn transpose_inplace(&mut self){
-        azip!(mut rmat (self.ori.axis_iter_mut(Axis(2))) in {
+    pub fn par_transpose_inplace(&mut self){
+        par_azip!(mut rmat (self.ori.axis_iter_mut(Axis(2))) in {
             let mut tmp = rmat[[0, 1]];
             rmat[[0, 1]] = rmat[[1, 0]];
             rmat[[1, 0]] = tmp;
@@ -104,11 +104,11 @@ impl RMat{
 
 ///The orientation conversions of a series of rotation matrices to a number of varying different orientation
 ///representations commonly used in material orientation processing. 
-impl OriConv for RMat{
+impl ParallelOriConv for RMat{
 
     ///Converts the rotation matrices to the equivalent bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_bunge(&self) -> Bunge{
+    fn par_to_bunge(&self) -> Bunge{
         
         let nelems = self.ori.len_of(Axis(2));
 
@@ -117,7 +117,7 @@ impl OriConv for RMat{
         //We need to check the R_33 component to see if it's near 1.0 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
                 bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
                 bunge[1] = std::f64::consts::FRAC_PI_2 * (1.0_f64 - rmat[[2, 2]]);
@@ -131,16 +131,16 @@ impl OriConv for RMat{
         });
 
         Bunge::new_init(ori)
-    }//End of to_bunge
+    }//End of par_to_bunge
 
     ///Returns a copy of the initial rotation matrix data structure
-    fn to_rmat(&self) -> RMat{
+    fn par_to_rmat(&self) -> RMat{
         self.clone()
-    }//End of to_rmat
+    }//End of par_to_rmat
 
     ///Converts the rotation matrix over to an angle-axis representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_ang_axis(&self) -> AngAxis{
+    fn par_to_ang_axis(&self) -> AngAxis{
 
         let nelems = self.ori.len_of(Axis(2));
 
@@ -148,7 +148,7 @@ impl OriConv for RMat{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
             //This is the angle of rotation about our normal axis.
@@ -167,18 +167,18 @@ impl OriConv for RMat{
         });
 
         AngAxis::new_init(ori)
-    }//End of to_ang_axis
+    }//End of par_to_ang_axis
 
     ///Converts the rotation matrix over to a compact angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_ang_axis_comp(&self) -> AngAxisComp{
+    fn par_to_ang_axis_comp(&self) -> AngAxisComp{
         let nelems = self.ori.len_of(Axis(2));
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
             //This is the angle of rotation about our normal axis.
@@ -193,18 +193,18 @@ impl OriConv for RMat{
         });
 
         AngAxisComp::new_init(ori)
-    }//End of to_ang_axis_comp
+    }//End of par_to_ang_axis_comp
 
     ///Converts the rotation matrix over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_rod_vec(&self) -> RodVec{
+    fn par_to_rod_vec(&self) -> RodVec{
         let nelems = self.ori.len_of(Axis(2));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
             //This is the angle of rotation about our normal axis.
@@ -223,18 +223,18 @@ impl OriConv for RMat{
         });
 
         RodVec::new_init(ori)
-    }//End of to_rod_vec
+    }//End of par_to_rod_vec
 
     ///Converts the rotation matrix over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_rod_vec_comp(&self) -> RodVecComp{
+    fn par_to_rod_vec_comp(&self) -> RodVecComp{
         let nelems = self.ori.len_of(Axis(2));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
             //This is the angle of rotation about our normal axis.
@@ -251,18 +251,18 @@ impl OriConv for RMat{
         });
 
         RodVecComp::new_init(ori)
-    }//End of to_rod_vec_comp
+    }//End of par_to_rod_vec_comp
 
     ///Converts the rotation matrix over to a unit quaternion representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_quat(&self) -> Quat{
+    fn par_to_quat(&self) -> Quat{
         let nelems = self.ori.len_of(Axis(2));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
@@ -289,19 +289,19 @@ impl OriConv for RMat{
         });
 
         Quat::new_init(ori)
-    }//End of to_quat
+    }//End of par_to_quat
 
     ///Converts the rotation matrix representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_homochoric(&self) -> Homochoric{
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_homochoric()
-    }//End of to_homochoric
+    fn par_to_homochoric(&self) -> Homochoric{
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric()
+    }//End of par_to_homochoric
 
     ///Converts the rotation matrices to the equivalent bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+    fn par_to_bunge_inplace(&self, bunge: &mut Bunge){
         let mut ori = bunge.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -315,7 +315,7 @@ impl OriConv for RMat{
         //We need to check the R_33 component to see if it's near 1.0 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
                 bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
                 bunge[1] = std::f64::consts::FRAC_PI_2 * (1.0_f64 - rmat[[2, 2]]);
@@ -332,7 +332,7 @@ impl OriConv for RMat{
 
     ///Returns a copy of the initial rotation matrix data structure
     ///This operation is done inplace and does not create a new structure
-    fn to_rmat_inplace(&self, rmat: &mut RMat){
+    fn par_to_rmat_inplace(&self, rmat: &mut RMat){
         let mut ori = rmat.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(2));
@@ -349,7 +349,7 @@ impl OriConv for RMat{
     ///Converts the rotation matrix over to an angle-axis representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+    fn par_to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
 
         let mut ori = ang_axis.ori_view_mut();
 
@@ -363,7 +363,7 @@ impl OriConv for RMat{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
             //This is the angle of rotation about our normal axis.
@@ -388,7 +388,7 @@ impl OriConv for RMat{
     ///Converts the rotation matrix over to a compact angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+    fn par_to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
 
         let mut ori = ang_axis_comp.ori_view_mut();
 
@@ -402,7 +402,7 @@ impl OriConv for RMat{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
             //This is the angle of rotation about our normal axis.
@@ -420,7 +420,7 @@ impl OriConv for RMat{
     ///Converts the rotation matrix over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+    fn par_to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
 
         let mut ori = rod_vec.ori_view_mut();
 
@@ -434,7 +434,7 @@ impl OriConv for RMat{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
             //This is the angle of rotation about our normal axis.
@@ -456,7 +456,7 @@ impl OriConv for RMat{
     ///Converts the rotation matrix over to a compact Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+    fn par_to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
 
         let mut ori = rod_vec_comp.ori_view_mut();
 
@@ -470,7 +470,7 @@ impl OriConv for RMat{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
             //This is the angle of rotation about our normal axis.
@@ -487,7 +487,7 @@ impl OriConv for RMat{
         });
     }
     ///This operation is done inplace and does not create a new structure
-    fn to_quat_inplace(&self, quat: &mut Quat){
+    fn par_to_quat_inplace(&self, quat: &mut Quat){
 
         let mut ori = quat.ori_view_mut();
 
@@ -501,7 +501,7 @@ impl OriConv for RMat{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             //The trace of Rmat
             let tr_r = rmat[[0, 0]] + rmat[[1, 1]] + rmat[[2, 2]];
@@ -528,9 +528,9 @@ impl OriConv for RMat{
         });
     }
     ///This operation is done inplace and does not create a new structure
-    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_homochoric_inplace(homochoric);
+    fn par_to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric_inplace(homochoric);
     }
 
 
@@ -538,7 +538,7 @@ impl OriConv for RMat{
 }//End of Impl Ori_Conv for RMat
 
 ///A series of commonly used operations to rotate vector data by a given rotation
-impl RotVector for RMat{
+impl ParallelRotVector for RMat{
 
     ///rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
     ///given rotation matrices. The newly rotated vectors are then returned. This function requires the
@@ -547,7 +547,7 @@ impl RotVector for RMat{
     ///If this condition is not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///Output - the rotated vector and has dimensions 3xnelems.
-    fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
+    fn par_rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
 
         let nelems = vec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(2));
@@ -569,7 +569,7 @@ impl RotVector for RMat{
         if rnelems == nelems {
             //Here we're iterating through each vector, rotation matrix, and rotated vector value
             //and assigning R*v to the rotated vector.
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref rmat (self.ori.axis_iter(Axis(2))) in {
                 rvec.assign({&rmat.dot(&vec)});
             });
@@ -582,7 +582,7 @@ impl RotVector for RMat{
         }else{
             //We now need to look at the case where we only have one vector to rotate but several rotation matrices
             let vec = vec.subview(Axis(1), 0);
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
                 rvec.assign({&rmat.dot(&vec)});
             });
         }//End if-else
@@ -598,7 +598,7 @@ impl RotVector for RMat{
     ///If these conditions are not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///rvec - the rotated vector and has dimensions 3xnelems.
-    fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
+    fn par_rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
 
         let nelems = vec.len_of(Axis(1));
         let rvnelems = rvec.len_of(Axis(1));
@@ -627,7 +627,7 @@ impl RotVector for RMat{
         if rnelems == nelems {
             //Here we're iterating through each vector, rotation matrix, and rotated vector value
             //and assigning R*v to the rotated vector.
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref rmat (self.ori.axis_iter(Axis(2))) in {
                 rvec.assign({&rmat.dot(&vec)});
             });
@@ -640,7 +640,7 @@ impl RotVector for RMat{
         }else{
             //We now need to look at the case where we only have one vector to rotate but several rotation matrices
             let vec = vec.subview(Axis(1), 0);
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
                 rvec.assign({&rmat.dot(&vec)});
             });
         }//End if-else
@@ -651,7 +651,7 @@ impl RotVector for RMat{
     ///number of elements in the rotation matrix to be either 1 or nelems where vec has nelems in it.
     ///If this condition is not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems.
-    fn rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
+    fn par_rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
 
         let nelems = vec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(2));
@@ -669,7 +669,7 @@ impl RotVector for RMat{
         if rnelems == nelems {
             //Here we're iterating through each vector, rotation matrix, and rotated vector value
             //and assigning R*v to the vector.
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            par_azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref rmat (self.ori.axis_iter(Axis(2))) in {
                 //A cleaner way needs to exists to perform this operation.
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rvec.assign({&rmat.dot(&vec)});
@@ -680,7 +680,7 @@ impl RotVector for RMat{
             //rvec values all at once.
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))) in{
+            par_azip!(mut vec (vec.axis_iter_mut(Axis(1))) in{
                 //A cleaner way needs to exists to perform this operation.
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rvec.assign({&self.ori.subview(Axis(2), 0).dot(&vec)});
@@ -691,7 +691,7 @@ impl RotVector for RMat{
 }//Endo of Impl RotVector
 
 ///A series of commonly used operations to rotate 2nd order 3x3 tensor data by a given rotation
-impl RotTensor for RMat{
+impl ParallelRotTensor for RMat{
 
     ///rot_tensor takes in a 3D array view of a series of tensors. It then rotates these tensors using the
     ///given rotation matrices. The newly rotated tensors are then returned. This function requires the
@@ -699,7 +699,7 @@ impl RotTensor for RMat{
     ///If this condition is not met the function will error out.
     ///tensor - the tensors to be rotated must have dimensions 3x3xnelems.
     ///Output - the rotated tensors and has dimensions 3x3xnelems.
-    fn rot_tensor(&self, tensor: ArrayView3<f64>) -> Array3<f64>{
+    fn par_rot_tensor(&self, tensor: ArrayView3<f64>) -> Array3<f64>{
 
         let nelems  = tensor.len_of(Axis(2));
         let rnelems = self.ori.len_of(Axis(2));
@@ -722,7 +722,7 @@ impl RotTensor for RMat{
         if rnelems == nelems {
             //Here we're iterating through each tensor, rotation matrix, and rotated tensor value
             //and assigning R*T*R^T to the rotated tensor.
-            azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))), 
+            par_azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))), 
             ref rmat (self.ori.axis_iter(Axis(2))) in {
                 rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
             });
@@ -730,7 +730,7 @@ impl RotTensor for RMat{
             //We just have one rmat so we can multiple that by our tensors.
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
-            azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))) in {
+            par_azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))) in {
             rtensor.assign({
                 &self.ori.subview(Axis(2), 0).dot(&tensor.dot(&self.ori.subview(Axis(2), 0).t()))
                 });
@@ -748,7 +748,7 @@ impl RotTensor for RMat{
     ///It also requires the number of elements in rtensor and tensor to be equal.
     ///tensor  - the tensors to be rotated must have dimensions 3x3xnelems.
     ///rtensor - the rotated tensors and has dimensions 3x3xnelems.
-    fn rot_tensor_mut(&self, tensor: ArrayView3<f64>, mut rtensor: ArrayViewMut3<f64>) {
+    fn par_rot_tensor_mut(&self, tensor: ArrayView3<f64>, mut rtensor: ArrayViewMut3<f64>) {
 
         let nelems  = tensor.len_of(Axis(2));
         let rtnelems  = rtensor.len_of(Axis(2));
@@ -776,7 +776,7 @@ impl RotTensor for RMat{
         if rnelems == nelems {
             //Here we're iterating through each tensor, rotation matrix, and rotated tensor value
             //and assigning R*T*R^T to the rotated tensor.
-            azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))), 
+            par_azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))), 
             ref rmat (self.ori.axis_iter(Axis(2))) in {
                 rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
             });
@@ -784,7 +784,7 @@ impl RotTensor for RMat{
             //We just have one rmat so we can multiple that by our tensors.
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
-            azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))) in {
+            par_azip!(mut rtensor (rtensor.axis_iter_mut(Axis(2))), ref tensor (tensor.axis_iter(Axis(2))) in {
                 rtensor.assign({
                     &self.ori.subview(Axis(2), 0).dot(&tensor.dot(&self.ori.subview(Axis(2), 0).t()))
                     });
@@ -797,7 +797,7 @@ impl RotTensor for RMat{
     ///tensors are assigned in place of the supplied variable tensor. This function requires the
     ///number of elements in the rotation matrix to be either 1 or nelems where tensor has nelems in it.
     ///tensor - the tensors to be rotated must have dimensions 3x3xnelems.
-    fn rot_tensor_inplace(&self, mut tensor: ArrayViewMut3<f64>) {
+    fn par_rot_tensor_inplace(&self, mut tensor: ArrayViewMut3<f64>) {
 
         let nelems  = tensor.len_of(Axis(2));
         let rnelems = self.ori.len_of(Axis(2));
@@ -818,7 +818,7 @@ impl RotTensor for RMat{
         if rnelems == nelems {
             //Here we're iterating through each tensor, rotation matrix, and rotated tensor value
             //and assigning R*T*R^T to the rotated tensor.
-            azip!(mut tensor (tensor.axis_iter_mut(Axis(2))), ref rmat (self.ori.axis_iter(Axis(2))) in {
+            par_azip!(mut tensor (tensor.axis_iter_mut(Axis(2))), ref rmat (self.ori.axis_iter(Axis(2))) in {
                 //A cleaner way needs to exists to perform this operation.
                 let mut rtensor = Array2::<f64>::zeros((3, 3).f());
                 rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
@@ -828,7 +828,7 @@ impl RotTensor for RMat{
             //We just have one rmat so we can multiple that by our tensors.
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
-            azip!(mut  tensor (tensor.axis_iter_mut(Axis(2))) in {
+            par_azip!(mut  tensor (tensor.axis_iter_mut(Axis(2))) in {
                 //A cleaner way needs to exists to perform this operation.
                 let mut rtensor = Array2::<f64>::zeros((3, 3).f());
                 rtensor.assign({&self.ori.subview(Axis(2), 0).dot(&tensor.dot(&self.ori.subview(Axis(2), 0).t()))});

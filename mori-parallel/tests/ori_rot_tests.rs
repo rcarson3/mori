@@ -1,22 +1,22 @@
-extern crate mori;
+extern crate mori_parallel;
 #[macro_use]
 extern crate ndarray;
 extern crate csv;
 
-use mori::orientations::*;
+use mori_parallel::orientations::*;
 use csv::ReaderBuilder;
 use ndarray::prelude::*;
 
 
 #[test]
-fn rmat_rot_vec(){
+fn par_rmat_rot_vec(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let vec = read_rod_comp_file();
 
     let rmat = RMat::new(nori);
 
-    let rvec = rmat.rot_vector(vec.view());
+    let rvec = rmat.par_rot_vector(vec.view());
 
     let comp = vec.all_close(&rvec, 1e-14);
 
@@ -24,7 +24,7 @@ fn rmat_rot_vec(){
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
 
-    let rvec = rmat.rot_vector(vec.view());
+    let rvec = rmat.par_rot_vector(vec.view());
 
     let comp = vec.all_close(&rvec, 1e-14);
 
@@ -40,7 +40,7 @@ fn rmat_rot_vec(){
 
     azip!(mut vec (vec_comp.axis_iter_mut(Axis(1))) in {vec[0] = 1.0_f64});
 
-    let rvec = rmat.rot_vector(vec.view());
+    let rvec = rmat.par_rot_vector(vec.view());
 
     let comp = vec_comp.all_close(&rvec, 1e-14);
 
@@ -49,7 +49,7 @@ fn rmat_rot_vec(){
 
 
 #[test]
-fn rmat_rot_vec_mut(){
+fn par_rmat_rot_vec_mut(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let vec = read_rod_comp_file();
@@ -57,7 +57,7 @@ fn rmat_rot_vec_mut(){
 
     let rmat = RMat::new(nori);
 
-    rmat.rot_vector_mut(vec.view(), rvec.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec.view_mut());
 
     let comp = vec.all_close(&rvec, 1e-14);
 
@@ -66,7 +66,7 @@ fn rmat_rot_vec_mut(){
     let rmat = RMat::new(1);
     let mut rvec = Array2::<f64>::zeros((3, nori).f());
 
-    rmat.rot_vector_mut(vec.view(), rvec.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec.view_mut());
 
 
     let comp = vec.all_close(&rvec, 1e-14);
@@ -84,7 +84,7 @@ fn rmat_rot_vec_mut(){
 
     azip!(mut vec (vec_comp.axis_iter_mut(Axis(1))) in {vec[0] = 1.0_f64});
 
-    rmat.rot_vector_mut(vec.view(), rvec.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec.view_mut());
 
     let comp = vec_comp.all_close(&rvec, 1e-14);
 
@@ -92,7 +92,7 @@ fn rmat_rot_vec_mut(){
 }
 
 #[test]
-fn rmat_rot_vec_inplace(){
+fn par_rmat_rot_vec_inplace(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let mut vec = read_rod_comp_file();
@@ -100,7 +100,7 @@ fn rmat_rot_vec_inplace(){
 
     let rmat = RMat::new(nori);
 
-    rmat.rot_vector_inplace(vec.view_mut());
+    rmat.par_rot_vector_inplace(vec.view_mut());
 
     let comp = vec_comp.all_close(&vec, 1e-14);
 
@@ -109,7 +109,7 @@ fn rmat_rot_vec_inplace(){
     let rmat = RMat::new(1);
     let mut vec = vec_comp.clone();
 
-    rmat.rot_vector_inplace(vec.view_mut());
+    rmat.par_rot_vector_inplace(vec.view_mut());
 
 
     let comp = vec_comp.all_close(&vec, 1e-14);
@@ -118,20 +118,20 @@ fn rmat_rot_vec_inplace(){
 }
 
 #[test]
-fn quat_rot_vec(){
+fn par_quat_rot_vec(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
-    let quat = rod.to_quat();
+    let rmat = rod.par_to_rmat();
+    let quat = rod.par_to_quat();
 
     let vec = Array2::<f64>::ones((3, nori).f());
 
-    let rvec_rmat = rmat.rot_vector(vec.view());
-    let rvec_quat = quat.rot_vector(vec.view());
+    let rvec_rmat = rmat.par_rot_vector(vec.view());
+    let rvec_quat = quat.par_rot_vector(vec.view());
 
     let comp = rvec_rmat.all_close(&rvec_quat, 1e-14);
 
@@ -140,8 +140,8 @@ fn quat_rot_vec(){
     let rmat = RMat::new(1);
     let quat = Quat::new(1);
 
-    let rvec_rmat = rmat.rot_vector(vec.view());
-    let rvec_quat = quat.rot_vector(vec.view());
+    let rvec_rmat = rmat.par_rot_vector(vec.view());
+    let rvec_quat = quat.par_rot_vector(vec.view());
 
     let comp = rvec_rmat.all_close(&rvec_quat, 1e-14);
 
@@ -150,22 +150,22 @@ fn quat_rot_vec(){
 
 
 #[test]
-fn quat_rot_vec_mut(){
+fn par_quat_rot_vec_mut(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
-    let quat = rod.to_quat();
+    let rmat = rod.par_to_rmat();
+    let quat = rod.par_to_quat();
 
     let vec = Array2::<f64>::ones((3, nori).f());
     let mut rvec_rmat = vec.clone();
     let mut rvec_quat = vec.clone();
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    quat.rot_vector_mut(vec.view(), rvec_quat.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    quat.par_rot_vector_mut(vec.view(), rvec_quat.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_quat, 1e-14);
 
@@ -177,8 +177,8 @@ fn quat_rot_vec_mut(){
     let mut rvec_rmat = vec.clone();
     let mut rvec_quat = vec.clone();
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    quat.rot_vector_mut(vec.view(), rvec_quat.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    quat.par_rot_vector_mut(vec.view(), rvec_quat.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_quat, 1e-14);
 
@@ -194,8 +194,8 @@ fn quat_rot_vec_mut(){
 
     vec[[0,0]] = 1.0_f64;
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    quat.rot_vector_mut(vec.view(), rvec_quat.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    quat.par_rot_vector_mut(vec.view(), rvec_quat.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_quat, 1e-14);
 
@@ -203,22 +203,22 @@ fn quat_rot_vec_mut(){
 }
 
 #[test]
-fn quat_rot_vec_inplace(){
+fn par_quat_rot_vec_inplace(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
-    let quat = rod.to_quat();
+    let rmat = rod.par_to_rmat();
+    let quat = rod.par_to_quat();
 
     let vec = Array2::<f64>::ones((3, nori).f());
     let mut rvec_rmat = vec.clone();
     let mut rvec_quat = vec.clone();
 
-    rmat.rot_vector_inplace(rvec_rmat.view_mut());
-    quat.rot_vector_inplace(rvec_quat.view_mut());
+    rmat.par_rot_vector_inplace(rvec_rmat.view_mut());
+    quat.par_rot_vector_inplace(rvec_quat.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_quat, 1e-14);
 
@@ -230,8 +230,8 @@ fn quat_rot_vec_inplace(){
     let mut rvec_rmat = vec.clone();
     let mut rvec_quat = vec.clone();
 
-    rmat.rot_vector_inplace(rvec_rmat.view_mut());
-    quat.rot_vector_inplace(rvec_quat.view_mut());
+    rmat.par_rot_vector_inplace(rvec_rmat.view_mut());
+    quat.par_rot_vector_inplace(rvec_quat.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_quat, 1e-14);
 
@@ -239,20 +239,20 @@ fn quat_rot_vec_inplace(){
 }
 
 #[test]
-fn angaxis_rot_vec(){
+fn par_angaxis_rot_vec(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
-    let ang_axis = rod.to_ang_axis();
+    let rmat = rod.par_to_rmat();
+    let ang_axis = rod.par_to_ang_axis();
 
     let vec = Array2::<f64>::ones((3, nori).f());
 
-    let rvec_rmat = rmat.rot_vector(vec.view());
-    let rvec_angaxis = ang_axis.rot_vector(vec.view());
+    let rvec_rmat = rmat.par_rot_vector(vec.view());
+    let rvec_angaxis = ang_axis.par_rot_vector(vec.view());
 
     let comp = rvec_rmat.all_close(&rvec_angaxis, 1e-14);
 
@@ -261,8 +261,8 @@ fn angaxis_rot_vec(){
     let rmat = RMat::new(1);
     let ang_axis = AngAxis::new(1);
 
-    let rvec_rmat = rmat.rot_vector(vec.view());
-    let rvec_angaxis = ang_axis.rot_vector(vec.view());
+    let rvec_rmat = rmat.par_rot_vector(vec.view());
+    let rvec_angaxis = ang_axis.par_rot_vector(vec.view());
 
     let comp = rvec_rmat.all_close(&rvec_angaxis, 1e-14);
 
@@ -272,22 +272,22 @@ fn angaxis_rot_vec(){
 
 
 #[test]
-fn angaxis_rot_vec_mut(){
+fn par_angaxis_rot_vec_mut(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
-    let ang_axis = rod.to_ang_axis();
+    let rmat = rod.par_to_rmat();
+    let ang_axis = rod.par_to_ang_axis();
 
     let vec = Array2::<f64>::ones((3, nori).f());
     let mut rvec_rmat = vec.clone();
     let mut rvec_angaxis = vec.clone();
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    ang_axis.rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    ang_axis.par_rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_angaxis, 1e-14);
 
@@ -299,8 +299,8 @@ fn angaxis_rot_vec_mut(){
     let mut rvec_rmat = vec.clone();
     let mut rvec_angaxis = vec.clone();
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    ang_axis.rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    ang_axis.par_rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_angaxis, 1e-14);
 
@@ -317,8 +317,8 @@ fn angaxis_rot_vec_mut(){
 
     vec[[0,0]] = 1.0_f64;
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    ang_axis.rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    ang_axis.par_rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_angaxis, 1e-14);
 
@@ -326,22 +326,22 @@ fn angaxis_rot_vec_mut(){
 }
 
 #[test]
-fn angaxis_rot_vec_inplace(){
+fn par_angaxis_rot_vec_inplace(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
-    let ang_axis = rod.to_ang_axis();
+    let rmat = rod.par_to_rmat();
+    let ang_axis = rod.par_to_ang_axis();
 
     let vec = Array2::<f64>::ones((3, nori).f());
     let mut rvec_rmat = vec.clone();
     let mut rvec_angaxis = vec.clone();
 
-    rmat.rot_vector_inplace(rvec_rmat.view_mut());
-    ang_axis.rot_vector_inplace(rvec_angaxis.view_mut());
+    rmat.par_rot_vector_inplace(rvec_rmat.view_mut());
+    ang_axis.par_rot_vector_inplace(rvec_angaxis.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_angaxis, 1e-14);
 
@@ -353,8 +353,8 @@ fn angaxis_rot_vec_inplace(){
     let mut rvec_rmat = vec.clone();
     let mut rvec_angaxis = vec.clone();
 
-    rmat.rot_vector_inplace(rvec_rmat.view_mut());
-    ang_axis.rot_vector_inplace(rvec_angaxis.view_mut());
+    rmat.par_rot_vector_inplace(rvec_rmat.view_mut());
+    ang_axis.par_rot_vector_inplace(rvec_angaxis.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_angaxis, 1e-14);
 
@@ -363,19 +363,19 @@ fn angaxis_rot_vec_inplace(){
 
 
 #[test]
-fn rodvec_rot_vec(){
+fn par_rodvec_rot_vec(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
+    let rmat = rod.par_to_rmat();
 
     let vec = Array2::<f64>::ones((3, nori).f());
 
-    let rvec_rmat = rmat.rot_vector(vec.view());
-    let rvec_rodvec = rod.rot_vector(vec.view());
+    let rvec_rmat = rmat.par_rot_vector(vec.view());
+    let rvec_rodvec = rod.par_rot_vector(vec.view());
 
     let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
 
@@ -386,8 +386,8 @@ fn rodvec_rot_vec(){
 
     let vec = Array2::<f64>::ones((3, nori).f());
 
-    let rvec_rmat = rmat.rot_vector(vec.view());
-    let rvec_rodvec = rod.rot_vector(vec.view());
+    let rvec_rmat = rmat.par_rot_vector(vec.view());
+    let rvec_rodvec = rod.par_rot_vector(vec.view());
 
     let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
 
@@ -396,21 +396,21 @@ fn rodvec_rot_vec(){
 
 
 #[test]
-fn rodvec_rot_vec_mut(){
+fn par_rodvec_rot_vec_mut(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
+    let rmat = rod.par_to_rmat();
     
     let vec = Array2::<f64>::ones((3, nori).f());
     let mut rvec_rmat = vec.clone();
     let mut rvec_rodvec = vec.clone();
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    rod.rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    rod.par_rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
 
@@ -421,8 +421,8 @@ fn rodvec_rot_vec_mut(){
     let mut rvec_rmat = vec.clone();
     let mut rvec_rodvec = vec.clone();
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    rod.rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    rod.par_rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
 
@@ -439,8 +439,8 @@ fn rodvec_rot_vec_mut(){
 
     vec[[0,0]] = 1.0_f64;
 
-    rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
-    rod_vec.rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
+    rmat.par_rot_vector_mut(vec.view(), rvec_rmat.view_mut());
+    rod_vec.par_rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
 
@@ -448,21 +448,21 @@ fn rodvec_rot_vec_mut(){
 }
 
 #[test]
-fn rodvec_rot_vec_inplace(){
+fn par_rodvec_rot_vec_inplace(){
     //First test does the rmat and vec have same number of elems
     let nori = 1551;
     let ori = read_rod_file();
 
     let rod = RodVec::new_init(ori.clone());
 
-    let rmat = rod.to_rmat();
+    let rmat = rod.par_to_rmat();
 
     let vec = Array2::<f64>::ones((3, nori).f());
     let mut rvec_rmat = vec.clone();
     let mut rvec_rodvec = vec.clone();
 
-    rmat.rot_vector_inplace(rvec_rmat.view_mut());
-    rod.rot_vector_inplace(rvec_rodvec.view_mut());
+    rmat.par_rot_vector_inplace(rvec_rmat.view_mut());
+    rod.par_rot_vector_inplace(rvec_rodvec.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
 
@@ -471,8 +471,8 @@ fn rodvec_rot_vec_inplace(){
     let rmat = RMat::new(1);
     let rod = RodVec::new(1);
 
-    rmat.rot_vector_inplace(rvec_rmat.view_mut());
-    rod.rot_vector_inplace(rvec_rodvec.view_mut());
+    rmat.par_rot_vector_inplace(rvec_rmat.view_mut());
+    rod.par_rot_vector_inplace(rvec_rodvec.view_mut());
 
     let comp = rvec_rmat.all_close(&rvec_rodvec, 1e-14);
 

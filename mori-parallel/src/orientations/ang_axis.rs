@@ -71,11 +71,11 @@ impl AngAxis{
     ///Returns a new RodVec that is equal to the equivalent of transposing a rotation matrix.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
     ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
-    pub fn transpose(&self) -> RodVec{
+    pub fn par_transpose(&self) -> RodVec{
         let nelems = self.ori.len_of(Axis(1));
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
         
-        azip!(mut ang_axis_t (ori.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut ang_axis_t (ori.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {
             ang_axis_t[0] = -1.0_f64 * ang_axis[0];
             ang_axis_t[1] = -1.0_f64 * ang_axis[1];
             ang_axis_t[2] = -1.0_f64 * ang_axis[2];
@@ -88,8 +88,8 @@ impl AngAxis{
     ///Performs the equivalent of transposing a rotation matrix on the internal orientations.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
     ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
-    pub fn transpose_inplace(&mut self){
-        azip!(mut ang_axis_t (self.ori.axis_iter_mut(Axis(1))) in {
+    pub fn par_transpose_inplace(&mut self){
+        par_azip!(mut ang_axis_t (self.ori.axis_iter_mut(Axis(1))) in {
             ang_axis_t[0] *= -1.0_f64;
             ang_axis_t[1] *= -1.0_f64;
             ang_axis_t[2] *= -1.0_f64;
@@ -101,11 +101,11 @@ impl AngAxis{
 
 ///The orientation conversions of a series of axis-angle representation to a number of varying different orientation
 ///representations commonly used in material orientation processing. 
-impl OriConv for AngAxis{
+impl ParallelOriConv for AngAxis{
 
     ///Converts the axis-angle representation over to Bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_bunge(&self) -> Bunge{
+    fn par_to_bunge(&self) -> Bunge{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -114,7 +114,7 @@ impl OriConv for AngAxis{
         //We need to check the R_33 component to see if it's near 1.0 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let c = angaxis[3].cos();
             let s = angaxis[3].sin();
 
@@ -146,17 +146,17 @@ impl OriConv for AngAxis{
 
         Bunge::new_init(ori)
 
-    }//End of to_bunge
+    }//End of par_to_bunge
 
     ///Converts the axis-angle representation over to a rotation matrix which has the following properties
     ///shape (3, 3, nelems), memory order = fortran/column major.
-    fn to_rmat(&self) -> RMat{
+    fn par_to_rmat(&self) -> RMat{
 
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let c = angaxis[3].cos();
             let s = angaxis[3].sin();
 
@@ -174,39 +174,39 @@ impl OriConv for AngAxis{
         });
 
         RMat::new_init(ori)
-    }//End of to_rmat
+    }//End of par_to_rmat
 
     ///Returns a clone of the axis-angle structure
-    fn to_ang_axis(&self) -> AngAxis{
+    fn par_to_ang_axis(&self) -> AngAxis{
         self.clone()
     }
 
     ///Converts the axis-angle representation over to a compact angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_ang_axis_comp(&self) -> AngAxisComp{
+    fn par_to_ang_axis_comp(&self) -> AngAxisComp{
         //We first convert to a axis-angle representation. Then we scale our normal vector by our the rotation
         //angle which is the fourth component of our axis-angle vector.
-        // let ang_axis = self.to_ang_axis();
+        // let ang_axis = self.par_to_ang_axis();
 
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        azip!(mut angaxis_comp (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis_comp (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             angaxis_comp[0] = angaxis[0] * angaxis[3];
             angaxis_comp[1] = angaxis[1] * angaxis[3];
             angaxis_comp[2] = angaxis[2] * angaxis[3];
         });
 
         AngAxisComp::new_init(ori)
-    }//End of to_ang_axis_comp
+    }//End of par_to_ang_axis_comp
 
     ///Converts the axis-angle representation over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_rod_vec(&self) -> RodVec{
+    fn par_to_rod_vec(&self) -> RodVec{
         //We first convert to a axis-angle representation. Then we just need to change the last component
         //of our axis-angle representation to be tan(phi/2) instead of phi
-        // let ang_axis = self.to_ang_axis();
+        // let ang_axis = self.par_to_ang_axis();
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -214,7 +214,7 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             rodvec[0] = angaxis[0];
             rodvec[1] = angaxis[1];
             rodvec[2] = angaxis[2];
@@ -222,18 +222,18 @@ impl OriConv for AngAxis{
         });
 
         RodVec::new_init(ori)
-    }//End of to_rod_vec
+    }//End of par_to_rod_vec
 
     ///Converts the axis-angle representation over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_rod_vec_comp(&self) -> RodVecComp{
+    fn par_to_rod_vec_comp(&self) -> RodVecComp{
 
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
         let inv2 = 1.0_f64/2.0_f64;
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let tan2 = f64::tan(inv2 * angaxis[3]);
             rodvec[0] = angaxis[0] * tan2;
             rodvec[1] = angaxis[1] * tan2;
@@ -241,11 +241,11 @@ impl OriConv for AngAxis{
         });
 
         RodVecComp::new_init(ori)
-    }//End of to_rod_vec_comp
+    }//End of par_to_rod_vec_comp
 
     ///Converts the axis-angle representation over to a unit quaternion representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_quat(&self) -> Quat{
+    fn par_to_quat(&self) -> Quat{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -253,7 +253,7 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64 / 2.0_f64;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let s = f64::sin(inv2 * angaxis[3]); 
 
             quat[0] = f64::cos(inv2 * angaxis[3]);
@@ -263,11 +263,11 @@ impl OriConv for AngAxis{
         });
 
         Quat::new_init(ori)
-    }//End of to_quat
+    }//End of par_to_quat
 
     ///Converts the axis-angle representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_homochoric(&self) ->Homochoric{
+    fn par_to_homochoric(&self) ->Homochoric{
 
         let nelems = self.ori.len_of(Axis(1));
 
@@ -276,7 +276,7 @@ impl OriConv for AngAxis{
         let inv3  = 1.0_f64 / 3.0_f64;
         let inv34 = 3.0_f64 / 4.0_f64;
 
-        azip!(mut homoch (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut homoch (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let pow_term    = inv34 * (angaxis[3] - angaxis[3].sin()); 
 
             homoch[0] = angaxis[0];
@@ -288,12 +288,12 @@ impl OriConv for AngAxis{
         Homochoric{
             ori,
         }
-    }//End of to_homochoric
+    }//End of par_to_homochoric
 
     ///Converts the axis-angle representation over to Bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_bunge_inplace(&self, bunge: &mut Bunge){
+    fn par_to_bunge_inplace(&self, bunge: &mut Bunge){
         let mut ori = bunge.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(2));
@@ -307,7 +307,7 @@ impl OriConv for AngAxis{
         //We need to check the R_33 component to see if it's near 1.0 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let c = angaxis[3].cos();
             let s = angaxis[3].sin();
 
@@ -341,7 +341,7 @@ impl OriConv for AngAxis{
     ///Converts the axis-angle representation over to a rotation matrix which has the following properties
     ///shape (3, 3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rmat_inplace(&self, rmat: &mut RMat){
+    fn par_to_rmat_inplace(&self, rmat: &mut RMat){
         let mut ori = rmat.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(2));
@@ -352,7 +352,7 @@ impl OriConv for AngAxis{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let c = angaxis[3].cos();
             let s = angaxis[3].sin();
 
@@ -372,7 +372,7 @@ impl OriConv for AngAxis{
 
     ///Copies the orientation structure in self over to the other AngAxis structure 
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+    fn par_to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
         let mut ori = ang_axis.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -390,7 +390,7 @@ impl OriConv for AngAxis{
     ///Converts the axis-angle representation over to a compact angle-axis representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+    fn par_to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
         let mut ori = ang_axis_comp.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -401,7 +401,7 @@ impl OriConv for AngAxis{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut angaxis_comp (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis_comp (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             angaxis_comp[0] = angaxis[0] * angaxis[3];
             angaxis_comp[1] = angaxis[1] * angaxis[3];
             angaxis_comp[2] = angaxis[2] * angaxis[3];
@@ -412,7 +412,7 @@ impl OriConv for AngAxis{
     ///Converts the axis-angle representation over to a Rodrigues vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+    fn par_to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
         let mut ori = rod_vec.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -425,7 +425,7 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             rodvec[0] = angaxis[0];
             rodvec[1] = angaxis[1];
             rodvec[2] = angaxis[2];
@@ -436,7 +436,7 @@ impl OriConv for AngAxis{
     ///Converts the axis-angle representation over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+    fn par_to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
         let mut ori = rod_vec_comp.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -449,7 +449,7 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let tan2 = f64::tan(inv2 * angaxis[3]);
             rodvec[0] = angaxis[0] * tan2;
             rodvec[1] = angaxis[1] * tan2;
@@ -460,7 +460,7 @@ impl OriConv for AngAxis{
     ///Converts the axis-angle representation over to a unit quaternion representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_quat_inplace(&self, quat: &mut Quat){
+    fn par_to_quat_inplace(&self, quat: &mut Quat){
         let mut ori = quat.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -473,7 +473,7 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64 / 2.0_f64;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let s = f64::sin(inv2 * angaxis[3]); 
 
             quat[0] = f64::cos(inv2 * angaxis[3]);
@@ -486,7 +486,7 @@ impl OriConv for AngAxis{
     ///Converts the axis-angle representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+    fn par_to_homochoric_inplace(&self, homochoric: &mut Homochoric){
         let mut ori = homochoric.ori.view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -500,7 +500,7 @@ impl OriConv for AngAxis{
         let inv3  = 1.0_f64 / 3.0_f64;
         let inv34 = 3.0_f64 / 4.0_f64;
 
-        azip!(mut homoch (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut homoch (ori.axis_iter_mut(Axis(1))), ref angaxis (self.ori.axis_iter(Axis(1))) in {
             let pow_term    = inv34 * (angaxis[3] - angaxis[3].sin()); 
 
             homoch[0] = angaxis[0];
@@ -514,7 +514,7 @@ impl OriConv for AngAxis{
 }//End of Impl OriConv for AngAxis
 
 ///A series of commonly used operations to rotate vector data by a given rotation
-impl RotVector for AngAxis{
+impl ParallelRotVector for AngAxis{
 
     ///rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
     ///given Axis-angle representation. The newly rotated vectors are then returned. This function requires the
@@ -523,7 +523,7 @@ impl RotVector for AngAxis{
     ///If this condition is not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///Output - the rotated vector and has dimensions 3xnelems.
-    fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
+    fn par_rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
 
         let nelems = vec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(1));
@@ -545,7 +545,7 @@ impl RotVector for AngAxis{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref ang_axis (self.ori.axis_iter(Axis(1))) in {
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);    
             });
@@ -553,14 +553,14 @@ impl RotVector for AngAxis{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
             let ang_axis = self.ori.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);   
             });
         } else {
             //We just have one vector so perform pretty much the above to get all of our values
             let vec = vec.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {  
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);  
             });
         }//End if-else
@@ -577,7 +577,7 @@ impl RotVector for AngAxis{
     ///If these conditions are not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///rvec - the rotated vector and has dimensions 3xnelems.
-    fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
+    fn par_rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
 
         let nelems = vec.len_of(Axis(1));
         let rvnelems = rvec.len_of(Axis(1));
@@ -604,7 +604,7 @@ impl RotVector for AngAxis{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref ang_axis (self.ori.axis_iter(Axis(1))) in {
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);   
             });
@@ -612,14 +612,14 @@ impl RotVector for AngAxis{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
             let ang_axis = self.ori.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);
             });
         } else{
             //We just have one vector so perform pretty much the above to get all of our values
             let vec = vec.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {  
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);  
             });
         }//End of if-else
@@ -630,7 +630,7 @@ impl RotVector for AngAxis{
     ///number of elements in the Axis-angle representation to be either 1 or nelems where vec has nelems in it.
     ///If this condition is not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems.
-    fn rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
+    fn par_rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
 
         let nelems = vec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(1));
@@ -648,7 +648,7 @@ impl RotVector for AngAxis{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {
+            par_azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref ang_axis (self.ori.axis_iter(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 ang_axis_rot_vec(&ang_axis, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});    
@@ -657,7 +657,7 @@ impl RotVector for AngAxis{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
             let ang_axis = self.ori.subview(Axis(1), 0);
 
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
+            par_azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 ang_axis_rot_vec(&ang_axis, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});  

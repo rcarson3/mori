@@ -13,7 +13,7 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-//! # mori - Material Orientation Library in Rust
+//! # mori_parallel - Parallel Material Orientation Library in Rust
 //! An orientation library built around commonly used orientation representations used in crystallography and engineering applications. It contains conversion, rotation, and data analysis operations for various orientation spaces.
 //!
 //! Orientations play a large role in a number of fields ranging from: crystallography, x-ray diffraction, metallurgy, solid mechanics, and the list can go on and on. Therefore, it's important to have a library that easily allows conversions from Eulearian representations to rotation matrices to neo-eulerian representation to quaternions. 
@@ -25,7 +25,7 @@
 //! * Orientation conversions between various orientation representations
 //! * Vector and tensor passive rotation operations
 //! * Helper functions such as transpose, various quaternion operations, and methods to view/mutate the private field holding each orientations
-//! * Parallel capabilities that match the serial code    
+//! * Parallel capabilities that match the serial library mori
 //!
 //! Later as it develops, the plan is to include the following:
 //!
@@ -41,6 +41,8 @@
 //! <b id="f3">[3]:</b>[↩](#a3) Glez J C and Driver J 2001 Orientation distribution analysis in deformed grains J. Appl. Cryst. 34 280–8
 #[macro_use]
 extern crate ndarray;
+#[macro_use]
+extern crate ndarray_parallel;
 
 use ndarray::prelude::*;
 

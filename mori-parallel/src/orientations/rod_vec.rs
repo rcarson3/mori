@@ -70,12 +70,12 @@ impl RodVec{
     ///Returns a new RodVec that is equal to the equivalent of transposing a rotation matrix.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
     ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
-    pub fn transpose(&self) -> RodVec{
+    pub fn par_transpose(&self) -> RodVec{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
         
-        azip!(mut rod_vec_t (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rod_vec_t (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
             rod_vec_t[0] = -1.0_f64 * rod_vec[0];
             rod_vec_t[1] = -1.0_f64 * rod_vec[1];
             rod_vec_t[2] = -1.0_f64 * rod_vec[2];
@@ -88,8 +88,8 @@ impl RodVec{
     ///Performs the equivalent of transposing a rotation matrix on the internal orientations.
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
     ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
-    pub fn transpose_inplace(&mut self){
-        azip!(mut rod_vec_t (self.ori.axis_iter_mut(Axis(1))) in {
+    pub fn par_transpose_inplace(&mut self){
+        par_azip!(mut rod_vec_t (self.ori.axis_iter_mut(Axis(1))) in {
             rod_vec_t[0] *= -1.0_f64;
             rod_vec_t[1] *= -1.0_f64;
             rod_vec_t[2] *= -1.0_f64;
@@ -99,26 +99,26 @@ impl RodVec{
 
 ///The orientation conversions of a series of Rodrigues vectors to a number of varying different orientation
 ///representations commonly used in material orientation processing. 
-impl OriConv for RodVec{
+impl ParallelOriConv for RodVec{
     ///Converts the Rodrigues vector representation over to Bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_bunge(&self) -> Bunge{
-        let rmat = self.to_rmat();
+    fn par_to_bunge(&self) -> Bunge{
+        let rmat = self.par_to_rmat();
         //When a pure conversion doesn't exist we just use the already existing ones in other orientation
         //representations 
-        rmat.to_bunge()
-    }//End of to_bunge
+        rmat.par_to_bunge()
+    }//End of par_to_bunge
 
 
     ///Converts the Rodrigues vector representation over to a rotation matrix which has the following properties
     ///shape (3, 3, nelems), memory order = fortran/column major.
-    fn to_rmat(&self) -> RMat{
+    fn par_to_rmat(&self) -> RMat{
 
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
             let phi = rod_vec[3].atan() * 2.0_f64;
             let c = phi.cos();
             let s = phi.sin();
@@ -137,17 +137,17 @@ impl OriConv for RodVec{
         });
 
         RMat::new_init(ori)
-    }//End of to_rmat
+    }//End of par_to_rmat
 
     ///Converts the Rodrigues vector representation over to axis-angle representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_ang_axis(&self) -> AngAxis{
+    fn par_to_ang_axis(&self) -> AngAxis{
 
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
             angaxis[0] = rodvec[0];
             angaxis[1] = rodvec[1];
             angaxis[2] = rodvec[2];
@@ -155,16 +155,16 @@ impl OriConv for RodVec{
         });
 
         AngAxis::new_init(ori)
-    }//End of to_ang_axis
+    }//End of par_to_ang_axis
 
     ///Converts the Rodrigues vector representation over to a compact axial vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_ang_axis_comp(&self) -> AngAxisComp{
+    fn par_to_ang_axis_comp(&self) -> AngAxisComp{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
             let phi = 2.0_f64 * rodvec[3].atan();
             angaxis[0] = rodvec[0] * phi;
             angaxis[1] = rodvec[1] * phi;
@@ -172,39 +172,39 @@ impl OriConv for RodVec{
         });
 
         AngAxisComp::new_init(ori)
-    }//End of to_ang_axis_comp
+    }//End of par_to_ang_axis_comp
 
     ///Returns a clone of the Rodrigues vector.
-    fn to_rod_vec(&self) -> RodVec{
+    fn par_to_rod_vec(&self) -> RodVec{
         self.clone()
-    }//End of to_rod_vec
+    }//End of par_to_rod_vec
 
     ///Converts the Rodrigues vector representation over to a compact Rodrigues which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
-    fn to_rod_vec_comp(&self) -> RodVecComp{
+    fn par_to_rod_vec_comp(&self) -> RodVecComp{
 
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        azip!(mut rodvec_comp (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rodvec_comp (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
             rodvec_comp[0] = rodvec[0] * rodvec[3];
             rodvec_comp[1] = rodvec[1] * rodvec[3];
             rodvec_comp[2] = rodvec[2] * rodvec[3];
         });
 
         RodVecComp::new_init(ori)
-    }//End of to_rod_vec_comp
+    }//End of par_to_rod_vec_comp
 
     ///Converts the Rodrigues vector representation over to a unit quaternion which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_quat(&self) -> Quat{
+    fn par_to_quat(&self) -> Quat{
 
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
             let phi = rod_vec[3].atan();
             let s = f64::sin(phi); 
 
@@ -215,27 +215,27 @@ impl OriConv for RodVec{
         });
 
         Quat::new_init(ori)
-    }//End of to_quat
+    }//End of par_to_quat
 
     ///Converts the Rodrigues vector representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
-    fn to_homochoric(&self) -> Homochoric{
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_homochoric()
-    }//End of to_homochoric
+    fn par_to_homochoric(&self) -> Homochoric{
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric()
+    }//End of par_to_homochoric
 
     ///Converts the Rodrigues vector representation over to Bunge angles which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_bunge_inplace(&self, bunge: &mut Bunge){
-        let rmat = self.to_rmat();
-        rmat.to_bunge_inplace(bunge);
+    fn par_to_bunge_inplace(&self, bunge: &mut Bunge){
+        let rmat = self.par_to_rmat();
+        rmat.par_to_bunge_inplace(bunge);
     }
 
     ///Converts the Rodrigues vector representation over to a rotation matrix which has the following properties
     ///shape (3, 3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rmat_inplace(&self, rmat: &mut RMat){
+    fn par_to_rmat_inplace(&self, rmat: &mut RMat){
 
         let mut ori = rmat.ori_view_mut();
 
@@ -247,7 +247,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
             let phi = rod_vec[3].atan() * 2.0_f64;
             let c = phi.cos();
             let s = phi.sin();
@@ -269,7 +269,7 @@ impl OriConv for RodVec{
     ///Converts the Rodrigues vector representation over to an axial vector representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
+    fn par_to_ang_axis_inplace(&self, ang_axis: &mut AngAxis){
 
         let mut ori = ang_axis.ori_view_mut();
 
@@ -281,7 +281,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
             angaxis[0] = rodvec[0];
             angaxis[1] = rodvec[1];
             angaxis[2] = rodvec[2];
@@ -292,7 +292,7 @@ impl OriConv for RodVec{
     ///Converts the Rodrigues vector representation over to a compact axial vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
+    fn par_to_ang_axis_comp_inplace(&self, ang_axis_comp: &mut AngAxisComp){
 
         let mut ori = ang_axis_comp.ori_view_mut();
 
@@ -304,7 +304,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
             let phi = 2.0_f64 * rodvec[3].atan();
             angaxis[0] = rodvec[0] * phi;
             angaxis[1] = rodvec[1] * phi;
@@ -314,7 +314,7 @@ impl OriConv for RodVec{
 
     ///Returns a clone of the Rodrigues vector.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
+    fn par_to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
         let mut ori = rod_vec.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -331,7 +331,7 @@ impl OriConv for RodVec{
     ///Converts the Rodrigues vector representation over to a compact Rodrigues which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+    fn par_to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
         let mut ori = rod_vec_comp.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
@@ -342,7 +342,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut rodvec_comp (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut rodvec_comp (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
             rodvec_comp[0] = rodvec[0] * rodvec[3];
             rodvec_comp[1] = rodvec[1] * rodvec[3];
             rodvec_comp[2] = rodvec[2] * rodvec[3];
@@ -353,7 +353,7 @@ impl OriConv for RodVec{
     ///Converts the Rodrigues vector representation over to a unit quaternion which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_quat_inplace(&self, quat: &mut Quat){
+    fn par_to_quat_inplace(&self, quat: &mut Quat){
         
         let mut ori = quat.ori_view_mut();
 
@@ -365,7 +365,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        par_azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
             let phi = rod_vec[3].atan();
             let s = f64::sin(phi); 
 
@@ -379,16 +379,16 @@ impl OriConv for RodVec{
     ///Converts the Rodrigues vector representation over to a homochoric representation which has the following properties
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_homochoric_inplace(&self, homochoric: &mut Homochoric){
-        let ang_axis = self.to_ang_axis();
-        ang_axis.to_homochoric_inplace(homochoric);
+    fn par_to_homochoric_inplace(&self, homochoric: &mut Homochoric){
+        let ang_axis = self.par_to_ang_axis();
+        ang_axis.par_to_homochoric_inplace(homochoric);
     }
 
 
 }//End of impl Ori_Conv of Rodrigues Vector
 
 ///A series of commonly used operations to rotate vector data by a given rotation
-impl RotVector for RodVec{
+impl ParallelRotVector for RodVec{
 
     ///rot_vector takes in a 2D array view of a series of vectors. It then rotates these vectors using the
     ///given Rodrigues vectors. The newly rotated vectors are then returned. This function requires the
@@ -397,7 +397,7 @@ impl RotVector for RodVec{
     ///If this condition is not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///Output - the rotated vector and has dimensions 3xnelems.
-    fn rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
+    fn par_rot_vector(&self, vec: ArrayView2<f64>) -> Array2<f64>{
 
         let nelems = vec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(1));
@@ -419,7 +419,7 @@ impl RotVector for RodVec{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref rod_vec (self.ori.axis_iter(Axis(1))) in {
                 rod_vec_rot_vec(&rod_vec, &vec, rvec);     
             });
@@ -427,14 +427,14 @@ impl RotVector for RodVec{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let rod_vec = self.ori.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             });
         }else{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let vec = vec.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             }); 
         }//End if-else
@@ -451,7 +451,7 @@ impl RotVector for RodVec{
     ///If these conditions are not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems or 3x1.
     ///rvec - the rotated vector and has dimensions 3xnelems.
-    fn rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
+    fn par_rot_vector_mut(&self, vec: ArrayView2<f64>, mut rvec: ArrayViewMut2<f64>) {
 
         let nelems = vec.len_of(Axis(1));
         let rvnelems = rvec.len_of(Axis(1));
@@ -478,7 +478,7 @@ impl RotVector for RodVec{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
             ref rod_vec (self.ori.axis_iter(Axis(1))) in {
                 rod_vec_rot_vec(&rod_vec, &vec, rvec);    
             });
@@ -486,14 +486,14 @@ impl RotVector for RodVec{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let rod_vec = self.ori.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             });
         }else{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let vec = vec.subview(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {  
+            par_azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             }); 
         }//End if-else
@@ -504,7 +504,7 @@ impl RotVector for RodVec{
     ///number of elements in the Rodrigues vector to be either 1 or nelems where vec has nelems in it.
     ///If this condition is not met the function will error out.
     ///vec - the vector to be rotated must have dimensions 3xnelems.
-    fn rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
+    fn par_rot_vector_inplace(&self, mut vec: ArrayViewMut2<f64>){
 
         let nelems = vec.len_of(Axis(1));
         let rnelems = self.ori.len_of(Axis(1));
@@ -522,7 +522,7 @@ impl RotVector for RodVec{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+            par_azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});    
@@ -531,7 +531,7 @@ impl RotVector for RodVec{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let rod_vec = self.ori.subview(Axis(1), 0);
 
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
+            par_azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});  
