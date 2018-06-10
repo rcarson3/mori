@@ -16,4 +16,5 @@ categories = ["data-structures", "science"]
 [dependencies]
 ndarray = "0.11.1"
 ndarray-parallel = "0.8"
+[dev-dependencies]
 csv = "1" 
