@@ -86,17 +86,9 @@ impl RMat{
     //Returns the transpose of the rotation matrix in place
     pub fn transpose_inplace(&mut self){
         azip!(mut rmat (self.ori.axis_iter_mut(Axis(2))) in {
-            let mut tmp = rmat[[0, 1]];
-            rmat[[0, 1]] = rmat[[1, 0]];
-            rmat[[1, 0]] = tmp;
-            
-            tmp = rmat[[0, 2]];
-            rmat[[0, 2]] = rmat[[2, 0]];
-            rmat[[2, 0]] = tmp;
-
-            tmp = rmat[[1, 2]];
-            rmat[[1, 2]] = rmat[[2, 1]];
-            rmat[[2, 1]] = tmp;
+            rmat.swap([0, 1], [1, 0]);
+            rmat.swap([0, 2], [2, 0]);
+            rmat.swap([2, 1], [1, 2]);
         });
     }
 
