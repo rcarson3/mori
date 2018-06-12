@@ -3,10 +3,10 @@ name = "mori_parallel"
 version = "0.1.0"
 authors = ["rcarson3 <rac428@cornell.edu>"]
 license = "MIT/Apache-2.0"
-readme = "README-crates.io.md"
+readme = "README.md"
 
 repository = "https://github.com/rcarson3/mori/mori-parallel/"
-documentation = ""
+documentation = "https://docs.rs/mori-parallel/"
 
 description = "A parallel orientation library built around commonly used orientation representations used in crystallography and engineering applications. It contains conversion, rotation, and data analysis operations for various orientation spaces."
 
