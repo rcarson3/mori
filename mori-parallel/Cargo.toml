@@ -8,9 +8,9 @@ readme = "README-crates.io.md"
 repository = "https://github.com/rcarson3/mori/mori-parallel/"
 documentation = ""
 
-description = "An orientation library built around commonly used orientation representations used in crystallography and engineering applications. It contains conversion, rotation, and data analysis operations for various orientation spaces."
+description = "A parallel orientation library built around commonly used orientation representations used in crystallography and engineering applications. It contains conversion, rotation, and data analysis operations for various orientation spaces."
 
-keywords = ["array", "orientation", "3D rotation", "crystallography"]
+keywords = ["array", "orientation", "3D rotation", "crystallography", "parallel"]
 categories = ["data-structures", "science"]
 
 [dependencies]
