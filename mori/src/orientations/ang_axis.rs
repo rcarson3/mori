@@ -675,7 +675,7 @@ fn ang_axis_rot_vec(ang_axis: &ArrayView1<f64>, vec: &ArrayView1<f64>, mut rvec:
     let mut cross_prod = Array1::<f64>::zeros((3).f());
 
     cross_prod[0] = -ang_axis[2] * vec[1] + ang_axis[1] * vec[2];
-    cross_prod[1] = ang_axis[2] * vec[0] - ang_axis[0] * vec[1];
+    cross_prod[1] = ang_axis[2] * vec[0] - ang_axis[0] * vec[2];
     cross_prod[2] = -ang_axis[1] * vec[0] + ang_axis[0] * vec[1];
 
     rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + ang_axis[0] * dp_mcos;

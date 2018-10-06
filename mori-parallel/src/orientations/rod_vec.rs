@@ -549,7 +549,7 @@ fn rod_vec_rot_vec(rod_vec: &ArrayView1<f64>, vec: &ArrayView1<f64>, mut rvec: A
     let mut cross_prod = Array1::<f64>::zeros((3).f());
 
     cross_prod[0] = -rod_vec[2] * vec[1] + rod_vec[1] * vec[2];
-    cross_prod[1] = rod_vec[2] * vec[0] - rod_vec[0] * vec[1];
+    cross_prod[1] = rod_vec[2] * vec[0] - rod_vec[0] * vec[2];
     cross_prod[2] = -rod_vec[1] * vec[0] + rod_vec[0] * vec[1];
 
     rvec[0] = vec[0] * cos_theta + cross_prod[0] * sin_theta + rod_vec[0] * dp_mcos;
