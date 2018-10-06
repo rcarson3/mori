@@ -1,16 +1,16 @@
 [package]
 name = "mori"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["rcarson3 <rac428@cornell.edu>"]
 license = "MIT/Apache-2.0"
-readme = "README-crates.io.md"
+readme = "README.md"
 
-repository = "https://github.com/rcarson3/mori/mori/"
-documentation = ""
+repository = "https://github.com/rcarson3/mori/tree/master/mori/"
+documentation = "https://docs.rs/mori/"
 
 description = "An orientation library built around commonly used orientation representations used in crystallography and engineering applications. It contains conversion, rotation, and data analysis operations for various orientation spaces."
 
-keywords = ["array", "orientation", "3D rotation", "crystallography"]
+keywords = ["array", "orientation", "3D_rotation", "crystallography"]
 categories = ["data-structures", "science"]
 
 [dependencies]

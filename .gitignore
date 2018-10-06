@@ -18,3 +18,8 @@ tests/python_trials\.py
 mori/target/
 
 mori/tests/python_trials\.py
+
+**/target/
+**/Cargo.lock
+**/.gitignore
+.gitignore
