@@ -39,7 +39,7 @@ impl Bunge{
     ///If it doesn't fit those standards it will fail.
     pub fn new_init(ori: Array2<f64>) -> Bunge{
 
-        let nrow = ori.rows();
+        let nrow = ori.nrows();
 
         assert!(nrow == 3, "Number of rows of array was: {}, which is not equal to 3", nrow);
         //We need to deal with a borrowing of ori here, so we need to have strides dropped at one point.
@@ -81,7 +81,7 @@ impl OriConv for Bunge{
         
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref bunge (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref bunge in self.ori.axis_iter(Axis(1))) {
             let s1 = bunge[0].sin();
             let c1 = bunge[0].cos();
             let s2 = bunge[1].sin();
@@ -187,7 +187,7 @@ impl OriConv for Bunge{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref bunge (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref bunge in self.ori.axis_iter(Axis(1))) {
             let s1 = bunge[0].sin();
             let c1 = bunge[0].cos();
             let s2 = bunge[1].sin();

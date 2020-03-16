@@ -29,7 +29,7 @@ impl Quat{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))) in {quat[0] = 1.0_f64});
+        azip!((mut quat in ori.axis_iter_mut(Axis(1))) {quat[0] = 1.0_f64});
 
         Quat{
             ori,
@@ -41,7 +41,7 @@ impl Quat{
     ///If it doesn't fit those standards it will fail.
     pub fn new_init(ori: Array2<f64>) -> Quat{
 
-        let nrow = ori.rows();
+        let nrow = ori.nrows();
 
         assert!(nrow == 4, "Number of rows of array was: {}, which is not equal to 4", nrow);
         //We need to deal with a borrowing of ori here, so we need to have strides dropped at one point.
@@ -73,7 +73,7 @@ impl Quat{
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
         
-        azip!(mut quat_c (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut quat_c in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             quat_c[0] = quat[0];
             quat_c[1] = -1.0_f64 * quat[1];
             quat_c[2] = -1.0_f64 * quat[2];
@@ -87,7 +87,7 @@ impl Quat{
     ///of the vector portions of the unit quaternion. The inverse is said to be the same here because
     ///for unit quaternions that is the case. If we didn't have unit quaternions that would not be the case.
     pub fn conjugate_inplace(&mut self){
-        azip!(mut quat_c (self.ori.axis_iter_mut(Axis(1))) in {
+        azip!((mut quat_c in self.ori.axis_iter_mut(Axis(1))) {
             quat_c[1] *= -1.0_f64;
             quat_c[2] *= -1.0_f64;
             quat_c[3] *= -1.0_f64;
@@ -122,22 +122,22 @@ impl Quat{
                 //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
-            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))), 
-            ref quat1 (self.ori.axis_iter(Axis(1))) in {
+            azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1)), 
+            ref quat1 in self.ori.axis_iter(Axis(1))) {
                 quat_product(&quat1, &quat2, quat_prod);     
             });
         } else if rnelems == 1{
             //We just have one Quaternion so perform pretty much the above to get all of our values
-            let quat1 = self.ori.subview(Axis(1), 0);
+            let quat1 = self.ori.index_axis(Axis(1), 0);
 
-            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))) in {  
+            azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1))) {  
                 quat_product(&quat1, &quat2, quat_prod);      
             });
         }else{
             //We just have one vector so perform pretty much the above to get all of our values
-            let quat2 = ori_quat2.subview(Axis(1), 0);
+            let quat2 = ori_quat2.index_axis(Axis(1), 0);
 
-            azip!(mut quat_prod (quat_prod.axis_iter_mut(Axis(1))), ref quat1 (self.ori.axis_iter(Axis(1))) in {  
+            azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat1 in self.ori.axis_iter(Axis(1))) {  
                 quat_product(&quat1, &quat2, quat_prod);  
             });
         }//End of if-else
@@ -183,22 +183,22 @@ impl Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 23 in the README.
-            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))), 
-            ref quat1 (self.ori.axis_iter(Axis(1))) in {
+            azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1)), 
+            ref quat1 in self.ori.axis_iter(Axis(1))) {
                 quat_product(&quat1, &quat2, quat_prod);     
             });
         } else if rnelems == 1{
             //We just have one Quaternion so perform pretty much the above to get all of our values
-            let quat1 = self.ori.subview(Axis(1), 0);
+            let quat1 = self.ori.index_axis(Axis(1), 0);
 
-            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat2 (ori_quat2.axis_iter(Axis(1))) in {  
+            azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1))) {  
                 quat_product(&quat1, &quat2, quat_prod);      
             });
         }else{
             //We just have one vector so perform pretty much the above to get all of our values
-            let quat2 = ori_quat2.subview(Axis(1), 0);
+            let quat2 = ori_quat2.index_axis(Axis(1), 0);
 
-            azip!(mut quat_prod (ori_quat_prod.axis_iter_mut(Axis(1))), ref quat1 (self.ori.axis_iter(Axis(1))) in {  
+            azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat1 in self.ori.axis_iter(Axis(1))) {  
                 quat_product(&quat1, &quat2, quat_prod);  
             });
         }//End of if-else
@@ -240,7 +240,7 @@ impl OriConv for Quat{
 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut bunge in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let q03 = quat[0] * quat[0] + quat[3] * quat[3];
             let q12 = quat[1] * quat[1] + quat[2] * quat[2];
             let xi = f64::sqrt(q03 * q12);
@@ -279,7 +279,7 @@ impl OriConv for Quat{
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref quat in self.ori.axis_iter(Axis(1))) {
             let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
             rmat[[0, 0]] = qbar + 2.0_f64 * quat[1] * quat[1];
@@ -308,7 +308,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1];
@@ -340,7 +340,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1] * std::f64::consts::PI;
@@ -368,7 +368,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let phi = quat[0].acos();
             if quat[0].abs() < tol{
                 rod_vec[0] = quat[1];
@@ -398,7 +398,7 @@ impl OriConv for Quat{
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec_comp (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec_comp in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let tan_phi = f64::tan(quat[0].acos());
             //This case will not allow for anything to be retrievable later on...
             if quat[0].abs() < tol{
@@ -445,7 +445,7 @@ impl OriConv for Quat{
 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut bunge in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let q03 = quat[0] * quat[0] + quat[3] * quat[3];
             let q12 = quat[1] * quat[1] + quat[2] * quat[2];
             let xi = f64::sqrt(q03 * q12);
@@ -489,7 +489,7 @@ impl OriConv for Quat{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref quat in self.ori.axis_iter(Axis(1))) {
             let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
             rmat[[0, 0]] = qbar + 2.0_f64 * quat[1] * quat[1];
@@ -522,7 +522,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1];
@@ -558,7 +558,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
                 angaxis[0] = quat[1] * std::f64::consts::PI;
@@ -590,7 +590,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let phi = quat[0].acos();
             if quat[0].abs() < tol{
                 rod_vec[0] = quat[1];
@@ -626,7 +626,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec_comp (ori.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec_comp in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             let tan_phi = f64::tan(quat[0].acos());
             //This case will not allow for anything to be retrievable later on...
             if quat[0].abs() < tol{
@@ -701,22 +701,22 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
-            ref quat (self.ori.axis_iter(Axis(1))) in {
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref quat in self.ori.axis_iter(Axis(1))) {
                 quat_rot_vec(&quat, &vec, rvec);     
             });
         } else if rnelems == 1{
             //We just have one Quaternion so perform pretty much the above to get all of our values
-            let quat = self.ori.subview(Axis(1), 0);
+            let quat = self.ori.index_axis(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 quat_rot_vec(&quat, &vec, rvec);      
             });
         }else{
             //We just have one vector so perform pretty much the above to get all of our values
-            let vec = vec.subview(Axis(1), 0);
+            let vec = vec.index_axis(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {  
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
         }//End of if-else
@@ -759,22 +759,22 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
-            ref quat (self.ori.axis_iter(Axis(1))) in {
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref quat in self.ori.axis_iter(Axis(1))) {
                 quat_rot_vec(&quat, &vec, rvec);         
             });
         } else if rnelems == 1{
             //We just have one Quaternion so perform pretty much the above to get all of our values
-            let quat = self.ori.subview(Axis(1), 0);
+            let quat = self.ori.index_axis(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
         } else{
             //We just have one vector so perform pretty much the above to get all of our values
-            let vec = vec.subview(Axis(1), 0);
+            let vec = vec.index_axis(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {  
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
         }//End of if-else
@@ -802,16 +802,16 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref quat (self.ori.axis_iter(Axis(1))) in {
+            azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});    
             });
         } else{
             //We just have one Quaternion so perform pretty much the above to get all of our values
-            let quat = self.ori.subview(Axis(1), 0);
+            let quat = self.ori.index_axis(Axis(1), 0);
 
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
+            azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f()); 
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});  

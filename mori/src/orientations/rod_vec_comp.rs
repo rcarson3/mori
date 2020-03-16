@@ -39,7 +39,7 @@ impl RodVecComp{
     ///If it doesn't fit those standards it will fail.
     pub fn new_init(ori: Array2<f64>) -> RodVecComp{
 
-        let nrow = ori.rows();
+        let nrow = ori.nrows();
 
         assert!(nrow == 3, "Number of rows of array was: {}, which is not equal to 4", nrow);
         //We need to deal with a borrowing of ori here, so we need to have strides dropped at one point.
@@ -129,7 +129,7 @@ impl OriConv for RodVecComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref rodvec_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rodvec in ori.axis_iter_mut(Axis(1)), ref rodvec_comp in self.ori.axis_iter(Axis(1))) {
             let norm_rodvec = f64::sqrt({
                 rodvec_comp[0] * rodvec_comp[0] 
                 + rodvec_comp[1] * rodvec_comp[1] 
@@ -222,7 +222,7 @@ impl OriConv for RodVecComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))), ref rodvec_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rodvec in ori.axis_iter_mut(Axis(1)), ref rodvec_comp in self.ori.axis_iter(Axis(1))) {
             let norm_rodvec = f64::sqrt({
                 rodvec_comp[0] * rodvec_comp[0] 
                 + rodvec_comp[1] * rodvec_comp[1] 

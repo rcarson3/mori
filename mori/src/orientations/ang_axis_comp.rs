@@ -29,7 +29,7 @@ impl AngAxisComp{
 
         let mut ori = Array2::<f64>::zeros((3, size).f());
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))) in {angaxis[2] = 1.0_f64});
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1))) {angaxis[2] = 1.0_f64});
 
         AngAxisComp{
             ori,
@@ -41,7 +41,7 @@ impl AngAxisComp{
     ///If it doesn't fit those standards it will fail.
     pub fn new_init(ori: Array2<f64>) -> AngAxisComp{
 
-        let nrow = ori.rows();
+        let nrow = ori.nrows();
 
         assert!(nrow == 3, "Number of rows of array was: {}, which is not equal to 4", nrow);
         //We need to deal with a borrowing of ori here, so we need to have strides dropped at one point.
@@ -97,7 +97,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             
             let norm_angaxis = f64::sqrt({
@@ -148,7 +148,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut bunge in ori.axis_iter_mut(Axis(2)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             
             let norm_angaxis = f64::sqrt({
@@ -215,7 +215,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -254,7 +254,7 @@ impl OriConv for AngAxisComp{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -289,7 +289,7 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64/2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -321,7 +321,7 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64 / 2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut quat in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -368,7 +368,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut bunge (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut bunge in ori.axis_iter_mut(Axis(2)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             
             let norm_angaxis = f64::sqrt({
@@ -436,7 +436,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let mut angaxis = Array1::<f64>::zeros((4).f());
             
             let norm_angaxis = f64::sqrt({
@@ -491,7 +491,7 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -547,7 +547,7 @@ impl OriConv for AngAxisComp{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -587,7 +587,7 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64/2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!(mut rod_vec (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 
@@ -624,7 +624,7 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64 / 2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref angaxis_comp (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut quat in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
             let norm_angaxis = f64::sqrt({
                 angaxis_comp[0] * angaxis_comp[0] 
                 + angaxis_comp[1] * angaxis_comp[1] 

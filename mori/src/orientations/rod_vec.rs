@@ -30,7 +30,7 @@ impl RodVec{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
-        azip!(mut rodvec (ori.axis_iter_mut(Axis(1))) in {rodvec[2] = 1.0_f64});
+        azip!((mut rodvec in ori.axis_iter_mut(Axis(1))) {rodvec[2] = 1.0_f64});
 
         RodVec{
             ori,
@@ -42,7 +42,7 @@ impl RodVec{
     ///If it doesn't fit those standards it will fail.
     pub fn new_init(ori: Array2<f64>) -> RodVec{
 
-        let nrow = ori.rows();
+        let nrow = ori.nrows();
 
         assert!(nrow == 4, "Number of rows of array was: {}, which is not equal to 4", nrow);
         //We need to deal with a borrowing of ori here, so we need to have strides dropped at one point.
@@ -75,7 +75,7 @@ impl RodVec{
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
         
-        azip!(mut rod_vec_t (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rod_vec_t in ori.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
             rod_vec_t[0] = -1.0_f64 * rod_vec[0];
             rod_vec_t[1] = -1.0_f64 * rod_vec[1];
             rod_vec_t[2] = -1.0_f64 * rod_vec[2];
@@ -89,7 +89,7 @@ impl RodVec{
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
     ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
     pub fn transpose_inplace(&mut self){
-        azip!(mut rod_vec_t (self.ori.axis_iter_mut(Axis(1))) in {
+        azip!((mut rod_vec_t in self.ori.axis_iter_mut(Axis(1))) {
             rod_vec_t[0] *= -1.0_f64;
             rod_vec_t[1] *= -1.0_f64;
             rod_vec_t[2] *= -1.0_f64;
@@ -118,7 +118,7 @@ impl OriConv for RodVec{
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
             let phi = rod_vec[3].atan() * 2.0_f64;
             let c = phi.cos();
             let s = phi.sin();
@@ -147,7 +147,7 @@ impl OriConv for RodVec{
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref rodvec in self.ori.axis_iter(Axis(1))) {
             angaxis[0] = rodvec[0];
             angaxis[1] = rodvec[1];
             angaxis[2] = rodvec[2];
@@ -164,7 +164,7 @@ impl OriConv for RodVec{
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref rodvec in self.ori.axis_iter(Axis(1))) {
             let phi = 2.0_f64 * rodvec[3].atan();
             angaxis[0] = rodvec[0] * phi;
             angaxis[1] = rodvec[1] * phi;
@@ -187,7 +187,7 @@ impl OriConv for RodVec{
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        azip!(mut rodvec_comp (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rodvec_comp in ori.axis_iter_mut(Axis(1)), ref rodvec in self.ori.axis_iter(Axis(1))) {
             rodvec_comp[0] = rodvec[0] * rodvec[3];
             rodvec_comp[1] = rodvec[1] * rodvec[3];
             rodvec_comp[2] = rodvec[2] * rodvec[3];
@@ -204,7 +204,7 @@ impl OriConv for RodVec{
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut quat in ori.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
             let phi = rod_vec[3].atan();
             let s = f64::sin(phi); 
 
@@ -247,7 +247,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut rmat (ori.axis_iter_mut(Axis(2))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
             let phi = rod_vec[3].atan() * 2.0_f64;
             let c = phi.cos();
             let s = phi.sin();
@@ -281,7 +281,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref rodvec in self.ori.axis_iter(Axis(1))) {
             angaxis[0] = rodvec[0];
             angaxis[1] = rodvec[1];
             angaxis[2] = rodvec[2];
@@ -304,7 +304,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut angaxis (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref rodvec in self.ori.axis_iter(Axis(1))) {
             let phi = 2.0_f64 * rodvec[3].atan();
             angaxis[0] = rodvec[0] * phi;
             angaxis[1] = rodvec[1] * phi;
@@ -342,7 +342,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut rodvec_comp (ori.axis_iter_mut(Axis(1))), ref rodvec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut rodvec_comp in ori.axis_iter_mut(Axis(1)), ref rodvec in self.ori.axis_iter(Axis(1))) {
             rodvec_comp[0] = rodvec[0] * rodvec[3];
             rodvec_comp[1] = rodvec[1] * rodvec[3];
             rodvec_comp[2] = rodvec[2] * rodvec[3];
@@ -365,7 +365,7 @@ impl OriConv for RodVec{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!(mut quat (ori.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+        azip!((mut quat in ori.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
             let phi = rod_vec[3].atan();
             let s = f64::sin(phi); 
 
@@ -419,22 +419,22 @@ impl RotVector for RodVec{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
-            ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref rod_vec in self.ori.axis_iter(Axis(1))) {
                 rod_vec_rot_vec(&rod_vec, &vec, rvec);     
             });
         } else if rnelems == 1{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
-            let rod_vec = self.ori.subview(Axis(1), 0);
+            let rod_vec = self.ori.index_axis(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             });
         }else{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
-            let vec = vec.subview(Axis(1), 0);
+            let vec = vec.index_axis(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {  
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             }); 
         }//End if-else
@@ -478,22 +478,22 @@ impl RotVector for RodVec{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))), 
-            ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref rod_vec in self.ori.axis_iter(Axis(1))) {
                 rod_vec_rot_vec(&rod_vec, &vec, rvec);    
             });
         } else if rnelems == 1{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
-            let rod_vec = self.ori.subview(Axis(1), 0);
+            let rod_vec = self.ori.index_axis(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref vec (vec.axis_iter(Axis(1))) in {  
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             });
         }else{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
-            let vec = vec.subview(Axis(1), 0);
+            let vec = vec.index_axis(Axis(1), 0);
 
-            azip!(mut rvec (rvec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {  
+            azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             }); 
         }//End if-else
@@ -522,16 +522,16 @@ impl RotVector for RodVec{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))), ref rod_vec (self.ori.axis_iter(Axis(1))) in {
+            azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});    
             });
         } else{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
-            let rod_vec = self.ori.subview(Axis(1), 0);
+            let rod_vec = self.ori.index_axis(Axis(1), 0);
 
-            azip!(mut vec (vec.axis_iter_mut(Axis(1))) in {
+            azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
                 vec.assign({&rvec});  
