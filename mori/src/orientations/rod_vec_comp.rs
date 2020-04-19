@@ -129,25 +129,29 @@ impl OriConv for RodVecComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut rodvec in ori.axis_iter_mut(Axis(1)), ref rodvec_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_rodvec = f64::sqrt({
-                rodvec_comp[0] * rodvec_comp[0] 
-                + rodvec_comp[1] * rodvec_comp[1] 
-                + rodvec_comp[2] * rodvec_comp[2]
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref rod_vec_comp: ArrayView1::<f64>| {
+            let norm_rod_vec = f64::sqrt({
+                rod_vec_comp[0] * rod_vec_comp[0] 
+                + rod_vec_comp[1] * rod_vec_comp[1] 
+                + rod_vec_comp[2] * rod_vec_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_rodvec.abs() < tol {
-                rodvec[2] = 1.0_f64;
-            }else if norm_rodvec == std::f64::INFINITY {
-                rodvec[3] = norm_rodvec;
+            if norm_rod_vec.abs() < tol {
+                rod_vec[2] = 1.0_f64;
+            }else if norm_rod_vec == std::f64::INFINITY {
+                rod_vec[3] = norm_rod_vec;
             }else {
-                let inv_norm_rodvec = 1.0_f64 / norm_rodvec;
-                rodvec[0] = rodvec_comp[0] * inv_norm_rodvec;
-                rodvec[1] = rodvec_comp[1] * inv_norm_rodvec;
-                rodvec[2] = rodvec_comp[2] * inv_norm_rodvec;
-                rodvec[3] = norm_rodvec;
+                let inv_norm_rod_vec = 1.0_f64 / norm_rod_vec;
+                rod_vec[0] = rod_vec_comp[0] * inv_norm_rod_vec;
+                rod_vec[1] = rod_vec_comp[1] * inv_norm_rod_vec;
+                rod_vec[2] = rod_vec_comp[2] * inv_norm_rod_vec;
+                rod_vec[3] = norm_rod_vec;
             }
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rod_vec_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, rod_vec_comp);
         });
 
         RodVec::new_init(ori)
@@ -209,7 +213,7 @@ impl OriConv for RodVecComp{
     ///shape (4, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
     fn to_rod_vec_inplace(&self, rod_vec: &mut RodVec){
-        let mut ori = rod_vec.ori_view_mut();
+        let mut ori =rod_vec.ori_view_mut();
 
         let new_nelem = ori.len_of(Axis(1));
         let nelem = self.ori.len_of(Axis(1));
@@ -222,25 +226,35 @@ impl OriConv for RodVecComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut rodvec in ori.axis_iter_mut(Axis(1)), ref rodvec_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_rodvec = f64::sqrt({
-                rodvec_comp[0] * rodvec_comp[0] 
-                + rodvec_comp[1] * rodvec_comp[1] 
-                + rodvec_comp[2] * rodvec_comp[2]
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref rod_vec_comp: ArrayView1::<f64>| {
+            let norm_rod_vec = f64::sqrt({
+                rod_vec_comp[0] * rod_vec_comp[0] 
+                + rod_vec_comp[1] * rod_vec_comp[1] 
+                + rod_vec_comp[2] * rod_vec_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_rodvec.abs() < tol {
-                rodvec[2] = 1.0_f64;
-            }else if norm_rodvec == std::f64::INFINITY {
-                rodvec[3] = norm_rodvec;
+            if norm_rod_vec.abs() < tol {
+                rod_vec[0] = 0.0_f64;
+                rod_vec[1] = 0.0_f64;
+                rod_vec[2] = 1.0_f64;
+                rod_vec[3] = 0.0_f64;
+            }else if norm_rod_vec == std::f64::INFINITY {
+                rod_vec[0] = 0.0_f64;
+                rod_vec[1] = 0.0_f64;
+                rod_vec[2] = 0.0_f64;
+                rod_vec[3] = norm_rod_vec;
             }else {
-                let inv_norm_rodvec = 1.0_f64 / norm_rodvec;
-                rodvec[0] = rodvec_comp[0] * inv_norm_rodvec;
-                rodvec[1] = rodvec_comp[1] * inv_norm_rodvec;
-                rodvec[2] = rodvec_comp[2] * inv_norm_rodvec;
-                rodvec[3] = norm_rodvec;
+                let inv_norm_rod_vec = 1.0_f64 / norm_rod_vec;
+                rod_vec[0] = rod_vec_comp[0] * inv_norm_rod_vec;
+                rod_vec[1] = rod_vec_comp[1] * inv_norm_rod_vec;
+                rod_vec[2] = rod_vec_comp[2] * inv_norm_rod_vec;
+                rod_vec[3] = norm_rod_vec;
             }
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rod_vec_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, rod_vec_comp);
         });
     }
 

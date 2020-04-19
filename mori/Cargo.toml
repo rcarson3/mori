@@ -16,6 +16,8 @@ categories = ["data-structures", "science"]
 
 [dependencies]
 ndarray = {version = "0.13.0", features=["approx"]}
+[features] 
+parallel = ["ndarray/rayon"]
 [dev-dependencies]
 csv = "1.1.3"
 approx = "0.3.2"

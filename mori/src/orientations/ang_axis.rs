@@ -31,7 +31,7 @@ impl AngAxis{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
-        azip!((mut angaxis in ori.axis_iter_mut(Axis(1))) {angaxis[2] = 1.0_f64});
+        azip!((mut ang_axis in ori.axis_iter_mut(Axis(1))) {ang_axis[2] = 1.0_f64});
 
         AngAxis{
             ori,
@@ -114,23 +114,23 @@ impl OriConv for AngAxis{
         //We need to check the R_33 component to see if it's near 1.0 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!((mut bunge in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let c = angaxis[3].cos();
-            let s = angaxis[3].sin();
+        let f = |mut bunge: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let c = ang_axis[3].cos();
+            let s = ang_axis[3].sin();
 
             let mut rmat = Array2::<f64>::zeros((3, 3).f());
 
-            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
-            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
-            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (ang_axis[0] * ang_axis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) + s * ang_axis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) - s * ang_axis[1];
 
-            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
-            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
-            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+            rmat[[0, 1]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) - s * ang_axis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (ang_axis[1] * ang_axis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) + s * ang_axis[0];
 
-            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
-            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
-            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+            rmat[[0, 2]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) + s * ang_axis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) - s * ang_axis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
 
             if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
                 bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
@@ -142,6 +142,10 @@ impl OriConv for AngAxis{
                 bunge[1] = rmat[[2, 2]].acos();
                 bunge[2] = f64::atan2(rmat[[0, 2]] * eta, rmat[[1, 2]] * eta);
             }
+        };
+
+        azip!((bunge in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(bunge, ang_axis);
         });
 
         Bunge::new_init(ori)
@@ -156,21 +160,25 @@ impl OriConv for AngAxis{
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let c = angaxis[3].cos();
-            let s = angaxis[3].sin();
+        let f = |mut rmat: ArrayViewMut2::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let c = ang_axis[3].cos();
+            let s = ang_axis[3].sin();
 
-            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
-            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
-            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (ang_axis[0] * ang_axis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) + s * ang_axis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) - s * ang_axis[1];
 
-            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
-            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
-            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+            rmat[[0, 1]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) - s * ang_axis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (ang_axis[1] * ang_axis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) + s * ang_axis[0];
 
-            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
-            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
-            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+            rmat[[0, 2]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) + s * ang_axis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) - s * ang_axis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
+        };
+
+        azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rmat, ang_axis);
         });
 
         RMat::new_init(ori)
@@ -192,10 +200,14 @@ impl OriConv for AngAxis{
 
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
-        azip!((mut angaxis_comp in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            angaxis_comp[0] = angaxis[0] * angaxis[3];
-            angaxis_comp[1] = angaxis[1] * angaxis[3];
-            angaxis_comp[2] = angaxis[2] * angaxis[3];
+        let f = |mut ang_axis_comp: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            ang_axis_comp[0] = ang_axis[0] * ang_axis[3];
+            ang_axis_comp[1] = ang_axis[1] * ang_axis[3];
+            ang_axis_comp[2] = ang_axis[2] * ang_axis[3];
+        };
+
+        azip!((ang_axis_comp in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis_comp, ang_axis);
         });
 
         AngAxisComp::new_init(ori)
@@ -214,11 +226,15 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!((mut rodvec in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            rodvec[0] = angaxis[0];
-            rodvec[1] = angaxis[1];
-            rodvec[2] = angaxis[2];
-            rodvec[3] = f64::tan(inv2 * angaxis[3]);
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            rod_vec[0] = ang_axis[0];
+            rod_vec[1] = ang_axis[1];
+            rod_vec[2] = ang_axis[2];
+            rod_vec[3] = f64::tan(inv2 * ang_axis[3]);
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis);
         });
 
         RodVec::new_init(ori)
@@ -233,11 +249,16 @@ impl OriConv for AngAxis{
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
 
         let inv2 = 1.0_f64/2.0_f64;
-        azip!((mut rodvec in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let tan2 = f64::tan(inv2 * angaxis[3]);
-            rodvec[0] = angaxis[0] * tan2;
-            rodvec[1] = angaxis[1] * tan2;
-            rodvec[2] = angaxis[2] * tan2;
+
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let tan2 = f64::tan(inv2 * ang_axis[3]);
+            rod_vec[0] = ang_axis[0] * tan2;
+            rod_vec[1] = ang_axis[1] * tan2;
+            rod_vec[2] = ang_axis[2] * tan2;
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis);
         });
 
         RodVecComp::new_init(ori)
@@ -253,13 +274,17 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64 / 2.0_f64;
 
-        azip!((mut quat in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let s = f64::sin(inv2 * angaxis[3]); 
+        let f = |mut quat: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let s = f64::sin(inv2 * ang_axis[3]); 
 
-            quat[0] = f64::cos(inv2 * angaxis[3]);
-            quat[1] = s * angaxis[0];
-            quat[2] = s * angaxis[1];
-            quat[3] = s * angaxis[2];
+            quat[0] = f64::cos(inv2 * ang_axis[3]);
+            quat[1] = s * ang_axis[0];
+            quat[2] = s * ang_axis[1];
+            quat[3] = s * ang_axis[2];
+        };
+
+        azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(quat, ang_axis);
         });
 
         Quat::new_init(ori)
@@ -276,13 +301,17 @@ impl OriConv for AngAxis{
         let inv3  = 1.0_f64 / 3.0_f64;
         let inv34 = 3.0_f64 / 4.0_f64;
 
-        azip!((mut homoch in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let pow_term    = inv34 * (angaxis[3] - angaxis[3].sin()); 
+        let f = |mut homoch: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let pow_term    = inv34 * (ang_axis[3] - ang_axis[3].sin()); 
 
-            homoch[0] = angaxis[0];
-            homoch[1] = angaxis[1];
-            homoch[2] = angaxis[2];
+            homoch[0] = ang_axis[0];
+            homoch[1] = ang_axis[1];
+            homoch[2] = ang_axis[2];
             homoch[3] = pow_term.powf(inv3);
+        };
+
+        azip!((homoch in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(homoch, ang_axis);
         });
 
         Homochoric{
@@ -307,23 +336,23 @@ impl OriConv for AngAxis{
         //We need to check the R_33 component to see if it's near 1.0 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!((mut bunge in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let c = angaxis[3].cos();
-            let s = angaxis[3].sin();
+        let f = |mut bunge: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let c = ang_axis[3].cos();
+            let s = ang_axis[3].sin();
 
             let mut rmat = Array2::<f64>::zeros((3, 3).f());
 
-            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
-            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
-            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (ang_axis[0] * ang_axis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) + s * ang_axis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) - s * ang_axis[1];
 
-            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
-            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
-            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+            rmat[[0, 1]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) - s * ang_axis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (ang_axis[1] * ang_axis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) + s * ang_axis[0];
 
-            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
-            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
-            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+            rmat[[0, 2]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) + s * ang_axis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) - s * ang_axis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
 
             if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
                 bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
@@ -335,7 +364,11 @@ impl OriConv for AngAxis{
                 bunge[1] = rmat[[2, 2]].acos();
                 bunge[2] = f64::atan2(rmat[[0, 2]] * eta, rmat[[1, 2]] * eta);
             }
-        }); 
+        };
+
+        azip!((bunge in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(bunge, ang_axis);
+        });
     }
 
     ///Converts the axis-angle representation over to a rotation matrix which has the following properties
@@ -352,22 +385,26 @@ impl OriConv for AngAxis{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let c = angaxis[3].cos();
-            let s = angaxis[3].sin();
+        let f = |mut rmat: ArrayViewMut2::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let c = ang_axis[3].cos();
+            let s = ang_axis[3].sin();
 
-            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
-            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
-            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (ang_axis[0] * ang_axis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) + s * ang_axis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) - s * ang_axis[1];
 
-            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
-            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
-            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+            rmat[[0, 1]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) - s * ang_axis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (ang_axis[1] * ang_axis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) + s * ang_axis[0];
 
-            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
-            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
-            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
-        }); 
+            rmat[[0, 2]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) + s * ang_axis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) - s * ang_axis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
+        };
+
+        azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rmat, ang_axis);
+        });
     }
 
     ///Copies the orientation structure in self over to the other AngAxis structure 
@@ -401,10 +438,14 @@ impl OriConv for AngAxis{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!((mut angaxis_comp in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            angaxis_comp[0] = angaxis[0] * angaxis[3];
-            angaxis_comp[1] = angaxis[1] * angaxis[3];
-            angaxis_comp[2] = angaxis[2] * angaxis[3];
+        let f = |mut ang_axis_comp: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            ang_axis_comp[0] = ang_axis[0] * ang_axis[3];
+            ang_axis_comp[1] = ang_axis[1] * ang_axis[3];
+            ang_axis_comp[2] = ang_axis[2] * ang_axis[3];
+        };
+
+        azip!((ang_axis_comp in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis_comp, ang_axis);
         });
 
     }
@@ -425,11 +466,15 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!((mut rodvec in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            rodvec[0] = angaxis[0];
-            rodvec[1] = angaxis[1];
-            rodvec[2] = angaxis[2];
-            rodvec[3] = f64::tan(inv2 * angaxis[3]);
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            rod_vec[0] = ang_axis[0];
+            rod_vec[1] = ang_axis[1];
+            rod_vec[2] = ang_axis[2];
+            rod_vec[3] = f64::tan(inv2 * ang_axis[3]);
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis);
         });
     }
     
@@ -449,11 +494,15 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!((mut rodvec in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let tan2 = f64::tan(inv2 * angaxis[3]);
-            rodvec[0] = angaxis[0] * tan2;
-            rodvec[1] = angaxis[1] * tan2;
-            rodvec[2] = angaxis[2] * tan2;
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let tan2 = f64::tan(inv2 * ang_axis[3]);
+            rod_vec[0] = ang_axis[0] * tan2;
+            rod_vec[1] = ang_axis[1] * tan2;
+            rod_vec[2] = ang_axis[2] * tan2;
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis);
         });
     }
 
@@ -473,13 +522,17 @@ impl OriConv for AngAxis{
 
         let inv2 = 1.0_f64 / 2.0_f64;
 
-        azip!((mut quat in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let s = f64::sin(inv2 * angaxis[3]); 
+        let f = |mut quat: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let s = f64::sin(inv2 * ang_axis[3]); 
 
-            quat[0] = f64::cos(inv2 * angaxis[3]);
-            quat[1] = s * angaxis[0];
-            quat[2] = s * angaxis[1];
-            quat[3] = s * angaxis[2];
+            quat[0] = f64::cos(inv2 * ang_axis[3]);
+            quat[1] = s * ang_axis[0];
+            quat[2] = s * ang_axis[1];
+            quat[3] = s * ang_axis[2];
+        };
+
+        azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(quat, ang_axis);
         });
     }
 
@@ -500,13 +553,17 @@ impl OriConv for AngAxis{
         let inv3  = 1.0_f64 / 3.0_f64;
         let inv34 = 3.0_f64 / 4.0_f64;
 
-        azip!((mut homoch in ori.axis_iter_mut(Axis(1)), ref angaxis in self.ori.axis_iter(Axis(1))) {
-            let pow_term    = inv34 * (angaxis[3] - angaxis[3].sin()); 
+        let f = |mut homoch: ArrayViewMut1::<f64>, ref ang_axis: ArrayView1::<f64>| {
+            let pow_term    = inv34 * (ang_axis[3] - ang_axis[3].sin()); 
 
-            homoch[0] = angaxis[0];
-            homoch[1] = angaxis[1];
-            homoch[2] = angaxis[2];
+            homoch[0] = ang_axis[0];
+            homoch[1] = ang_axis[1];
+            homoch[2] = ang_axis[2];
             homoch[3] = pow_term.powf(inv3);
+        };
+
+        azip!((homoch in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(homoch, ang_axis);
         });
     }
 

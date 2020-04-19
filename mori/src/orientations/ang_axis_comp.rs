@@ -29,7 +29,7 @@ impl AngAxisComp{
 
         let mut ori = Array2::<f64>::zeros((3, size).f());
 
-        azip!((mut angaxis in ori.axis_iter_mut(Axis(1))) {angaxis[2] = 1.0_f64});
+        azip!((mut ang_axis in ori.axis_iter_mut(Axis(1))) {ang_axis[2] = 1.0_f64});
 
         AngAxisComp{
             ori,
@@ -97,42 +97,46 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let mut angaxis = Array1::<f64>::zeros((4).f());
+        let f = |mut rmat: ArrayViewMut2::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let mut ang_axis = Array1::<f64>::zeros((4).f());
             
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_angaxis.abs() < tol{
-                angaxis[2] = 1.0_f64; 
+            if norm_ang_axis.abs() < tol{
+                ang_axis[2] = 1.0_f64; 
             }else{
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
-                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
-                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
-                angaxis[3] = norm_angaxis;
+                ang_axis[0] = ang_axis_comp[0] * inv_norm_ang_axis;
+                ang_axis[1] = ang_axis_comp[1] * inv_norm_ang_axis;
+                ang_axis[2] = ang_axis_comp[2] * inv_norm_ang_axis;
+                ang_axis[3] = norm_ang_axis;
             }
 
 
-            let c = angaxis[3].cos();
-            let s = angaxis[3].sin();
+            let c = ang_axis[3].cos();
+            let s = ang_axis[3].sin();
 
-            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
-            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
-            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (ang_axis[0] * ang_axis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) + s * ang_axis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) - s * ang_axis[1];
 
-            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
-            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
-            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+            rmat[[0, 1]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) - s * ang_axis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (ang_axis[1] * ang_axis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) + s * ang_axis[0];
 
-            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
-            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
-            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+            rmat[[0, 2]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) + s * ang_axis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) - s * ang_axis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
+        };
+
+        azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rmat, ang_axis_comp);
         });
 
         RMat::new_init(ori) 
@@ -148,44 +152,44 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut bunge in ori.axis_iter_mut(Axis(2)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let mut angaxis = Array1::<f64>::zeros((4).f());
+        let f = |mut bunge: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let mut ang_axis = Array1::<f64>::zeros((4).f());
             
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_angaxis.abs() < tol{
-                angaxis[2] = 1.0_f64; 
+            if norm_ang_axis.abs() < tol{
+                ang_axis[2] = 1.0_f64; 
             }else{
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
-                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
-                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
-                angaxis[3] = norm_angaxis;
+                ang_axis[0] = ang_axis_comp[0] * inv_norm_ang_axis;
+                ang_axis[1] = ang_axis_comp[1] * inv_norm_ang_axis;
+                ang_axis[2] = ang_axis_comp[2] * inv_norm_ang_axis;
+                ang_axis[3] = norm_ang_axis;
             }
 
 
-            let c = angaxis[3].cos();
-            let s = angaxis[3].sin();
+            let c = ang_axis[3].cos();
+            let s = ang_axis[3].sin();
 
             let mut rmat = Array2::<f64>::zeros((3, 3).f());
 
-            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
-            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
-            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (ang_axis[0] * ang_axis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) + s * ang_axis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) - s * ang_axis[1];
 
-            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
-            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
-            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+            rmat[[0, 1]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) - s * ang_axis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (ang_axis[1] * ang_axis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) + s * ang_axis[0];
 
-            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
-            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
-            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+            rmat[[0, 2]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) + s * ang_axis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) - s * ang_axis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
 
             if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
                 bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
@@ -197,6 +201,10 @@ impl OriConv for AngAxisComp{
                 bunge[1] = rmat[[2, 2]].acos();
                 bunge[2] = f64::atan2(rmat[[0, 2]] * eta, rmat[[1, 2]] * eta);
             }
+        };
+
+        azip!((bunge in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(bunge, ang_axis_comp);
         });
 
         Bunge::new_init(ori)
@@ -215,24 +223,28 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+        let f = |mut ang_axis: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_angaxis.abs() < tol{
-                angaxis[2] = 1.0_f64; 
+            if norm_ang_axis.abs() < tol{
+                ang_axis[2] = 1.0_f64; 
             }else{
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
-                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
-                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
-                angaxis[3] = norm_angaxis;
+                ang_axis[0] = ang_axis_comp[0] * inv_norm_ang_axis;
+                ang_axis[1] = ang_axis_comp[1] * inv_norm_ang_axis;
+                ang_axis[2] = ang_axis_comp[2] * inv_norm_ang_axis;
+                ang_axis[3] = norm_ang_axis;
             }
+        };
+
+        azip!((ang_axis in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, ang_axis_comp);
         });
 
         AngAxis::new_init(ori)
@@ -254,26 +266,30 @@ impl OriConv for AngAxisComp{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_angaxis.abs() < tol{
+            if norm_ang_axis.abs() < tol{
                 rod_vec[2] = 1.0_f64; 
             }else{
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                let tan2 = f64::tan(inv2 * norm_angaxis);
+                let tan2 = f64::tan(inv2 * norm_ang_axis);
 
-                rod_vec[0] = angaxis_comp[0] * inv_norm_angaxis;
-                rod_vec[1] = angaxis_comp[1] * inv_norm_angaxis;
-                rod_vec[2] = angaxis_comp[2] * inv_norm_angaxis;
+                rod_vec[0] = ang_axis_comp[0] * inv_norm_ang_axis;
+                rod_vec[1] = ang_axis_comp[1] * inv_norm_ang_axis;
+                rod_vec[2] = ang_axis_comp[2] * inv_norm_ang_axis;
                 rod_vec[3] = tan2;
             }
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis_comp);
         });
 
         RodVec::new_init(ori)
@@ -289,23 +305,27 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64/2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
 
-            if norm_angaxis.abs() > tol{ 
+            if norm_ang_axis.abs() > tol{ 
 
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                let tan2 = f64::tan(inv2 * norm_angaxis);
+                let tan2 = f64::tan(inv2 * norm_ang_axis);
 
-                rod_vec[0] = angaxis_comp[0] * inv_norm_angaxis * tan2;
-                rod_vec[1] = angaxis_comp[1] * inv_norm_angaxis * tan2;
-                rod_vec[2] = angaxis_comp[2] * inv_norm_angaxis * tan2;
+                rod_vec[0] = ang_axis_comp[0] * inv_norm_ang_axis * tan2;
+                rod_vec[1] = ang_axis_comp[1] * inv_norm_ang_axis * tan2;
+                rod_vec[2] = ang_axis_comp[2] * inv_norm_ang_axis * tan2;
             }
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis_comp);
         });
 
         RodVecComp::new_init(ori)
@@ -321,25 +341,29 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64 / 2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!((mut quat in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+        let f = |mut quat: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
 
-            let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+            let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-            let s = f64::sin(inv2 * norm_angaxis); 
+            let s = f64::sin(inv2 * norm_ang_axis); 
 
-            if norm_angaxis.abs() > tol{
-                quat[0] = f64::cos(inv2 * norm_angaxis);
-                quat[1] = s * angaxis_comp[0] * inv_norm_angaxis;
-                quat[2] = s * angaxis_comp[1] * inv_norm_angaxis;
-                quat[3] = s * angaxis_comp[2] * inv_norm_angaxis;
+            if norm_ang_axis.abs() > tol{
+                quat[0] = f64::cos(inv2 * norm_ang_axis);
+                quat[1] = s * ang_axis_comp[0] * inv_norm_ang_axis;
+                quat[2] = s * ang_axis_comp[1] * inv_norm_ang_axis;
+                quat[3] = s * ang_axis_comp[2] * inv_norm_ang_axis;
             }else{
                 quat[0] = 1.0_f64;
             }
+        };
+
+        azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(quat, ang_axis_comp);
         });
 
         Quat::new_init(ori)
@@ -368,44 +392,44 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut bunge in ori.axis_iter_mut(Axis(2)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let mut angaxis = Array1::<f64>::zeros((4).f());
+        let f = |mut bunge: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let mut ang_axis = Array1::<f64>::zeros((4).f());
             
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_angaxis.abs() < tol{
-                angaxis[2] = 1.0_f64; 
+            if norm_ang_axis.abs() < tol{
+                ang_axis[2] = 1.0_f64; 
             }else{
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
-                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
-                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
-                angaxis[3] = norm_angaxis;
+                ang_axis[0] = ang_axis_comp[0] * inv_norm_ang_axis;
+                ang_axis[1] = ang_axis_comp[1] * inv_norm_ang_axis;
+                ang_axis[2] = ang_axis_comp[2] * inv_norm_ang_axis;
+                ang_axis[3] = norm_ang_axis;
             }
 
 
-            let c = angaxis[3].cos();
-            let s = angaxis[3].sin();
+            let c = ang_axis[3].cos();
+            let s = ang_axis[3].sin();
 
             let mut rmat = Array2::<f64>::zeros((3, 3).f());
 
-            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
-            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
-            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (ang_axis[0] * ang_axis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) + s * ang_axis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) - s * ang_axis[1];
 
-            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
-            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
-            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+            rmat[[0, 1]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) - s * ang_axis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (ang_axis[1] * ang_axis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) + s * ang_axis[0];
 
-            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
-            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
-            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
+            rmat[[0, 2]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) + s * ang_axis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) - s * ang_axis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
 
             if f64::abs(rmat[[2, 2]]) > (1.0_f64 - tol){
                 bunge[0] = f64::atan2(rmat[[0, 1]], rmat[[0, 0]]);
@@ -417,6 +441,10 @@ impl OriConv for AngAxisComp{
                 bunge[1] = rmat[[2, 2]].acos();
                 bunge[2] = f64::atan2(rmat[[0, 2]] * eta, rmat[[1, 2]] * eta);
             }
+        };
+
+        azip!((bunge in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(bunge, ang_axis_comp);
         });
     }
 
@@ -436,43 +464,47 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let mut angaxis = Array1::<f64>::zeros((4).f());
+        let f = |mut rmat: ArrayViewMut2::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let mut ang_axis = Array1::<f64>::zeros((4).f());
             
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_angaxis.abs() < tol{
-                angaxis[2] = 1.0_f64; 
+            if norm_ang_axis.abs() < tol{
+                ang_axis[2] = 1.0_f64; 
             }else{
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
-                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
-                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
-                angaxis[3] = norm_angaxis;
+                ang_axis[0] = ang_axis_comp[0] * inv_norm_ang_axis;
+                ang_axis[1] = ang_axis_comp[1] * inv_norm_ang_axis;
+                ang_axis[2] = ang_axis_comp[2] * inv_norm_ang_axis;
+                ang_axis[3] = norm_ang_axis;
             }
 
 
-            let c = angaxis[3].cos();
-            let s = angaxis[3].sin();
+            let c = ang_axis[3].cos();
+            let s = ang_axis[3].sin();
 
-            rmat[[0, 0]] = c + (1.0_f64 - c) * (angaxis[0] * angaxis[0]);
-            rmat[[1, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) + s * angaxis[2];
-            rmat[[2, 0]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) - s * angaxis[1];
+            rmat[[0, 0]] = c + (1.0_f64 - c) * (ang_axis[0] * ang_axis[0]);
+            rmat[[1, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) + s * ang_axis[2];
+            rmat[[2, 0]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) - s * ang_axis[1];
 
-            rmat[[0, 1]] = (1.0_f64 - c) * (angaxis[0] * angaxis[1]) - s * angaxis[2];
-            rmat[[1, 1]] = c + (1.0_f64 - c) * (angaxis[1] * angaxis[1]);
-            rmat[[2, 1]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) + s * angaxis[0];
+            rmat[[0, 1]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[1]) - s * ang_axis[2];
+            rmat[[1, 1]] = c + (1.0_f64 - c) * (ang_axis[1] * ang_axis[1]);
+            rmat[[2, 1]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) + s * ang_axis[0];
 
-            rmat[[0, 2]] = (1.0_f64 - c) * (angaxis[0] * angaxis[2]) + s * angaxis[1];
-            rmat[[1, 2]] = (1.0_f64 - c) * (angaxis[1] * angaxis[2]) - s * angaxis[0];
-            rmat[[2, 2]] = c + (1.0_f64 - c) * (angaxis[2] * angaxis[2]);
-        }); 
+            rmat[[0, 2]] = (1.0_f64 - c) * (ang_axis[0] * ang_axis[2]) + s * ang_axis[1];
+            rmat[[1, 2]] = (1.0_f64 - c) * (ang_axis[1] * ang_axis[2]) - s * ang_axis[0];
+            rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
+        };
+
+        azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rmat, ang_axis_comp);
+        });
     }
 
     ///Converts the compact axis-angle representation over to an angle-axis representation which has the following properties
@@ -491,24 +523,31 @@ impl OriConv for AngAxisComp{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+        let f = |mut ang_axis: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_angaxis.abs() < tol{
-                angaxis[2] = 1.0_f64; 
+            if norm_ang_axis.abs() < tol{
+                ang_axis[0] = 0.0_f64;
+                ang_axis[1] = 0.0_f64;
+                ang_axis[2] = 1.0_f64;
+                ang_axis[3] = 0.0_f64; 
             }else{
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                angaxis[0] = angaxis_comp[0] * inv_norm_angaxis;
-                angaxis[1] = angaxis_comp[1] * inv_norm_angaxis;
-                angaxis[2] = angaxis_comp[2] * inv_norm_angaxis;
-                angaxis[3] = norm_angaxis;
+                ang_axis[0] = ang_axis_comp[0] * inv_norm_ang_axis;
+                ang_axis[1] = ang_axis_comp[1] * inv_norm_ang_axis;
+                ang_axis[2] = ang_axis_comp[2] * inv_norm_ang_axis;
+                ang_axis[3] = norm_ang_axis;
             }
+        };
+
+        azip!((ang_axis in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, ang_axis_comp);
         });
     }
 
@@ -547,26 +586,33 @@ impl OriConv for AngAxisComp{
 
         let inv2 = 1.0_f64/2.0_f64;
 
-        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
             //If we follow the same convention that we use with quaternions for cases with no rotation
             //then we set it equal to the following vector with the no rotation ([0, 0, 1], 0)
-            if norm_angaxis.abs() < tol{
-                rod_vec[2] = 1.0_f64; 
+            if norm_ang_axis.abs() < tol{
+                rod_vec[0] = 0.0_f64;
+                rod_vec[1] = 0.0_f64;
+                rod_vec[2] = 1.0_f64;
+                rod_vec[3] = 0.0_f64; 
             }else{
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                let tan2 = f64::tan(inv2 * norm_angaxis);
+                let tan2 = f64::tan(inv2 * norm_ang_axis);
 
-                rod_vec[0] = angaxis_comp[0] * inv_norm_angaxis;
-                rod_vec[1] = angaxis_comp[1] * inv_norm_angaxis;
-                rod_vec[2] = angaxis_comp[2] * inv_norm_angaxis;
+                rod_vec[0] = ang_axis_comp[0] * inv_norm_ang_axis;
+                rod_vec[1] = ang_axis_comp[1] * inv_norm_ang_axis;
+                rod_vec[2] = ang_axis_comp[2] * inv_norm_ang_axis;
                 rod_vec[3] = tan2;
             }
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis_comp);
         });
     }
 
@@ -587,23 +633,31 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64/2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
 
-            if norm_angaxis.abs() > tol{ 
+            if norm_ang_axis.abs() > tol{ 
 
-                let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+                let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-                let tan2 = f64::tan(inv2 * norm_angaxis);
+                let tan2 = f64::tan(inv2 * norm_ang_axis);
 
-                rod_vec[0] = angaxis_comp[0] * inv_norm_angaxis * tan2;
-                rod_vec[1] = angaxis_comp[1] * inv_norm_angaxis * tan2;
-                rod_vec[2] = angaxis_comp[2] * inv_norm_angaxis * tan2;
+                rod_vec[0] = ang_axis_comp[0] * inv_norm_ang_axis * tan2;
+                rod_vec[1] = ang_axis_comp[1] * inv_norm_ang_axis * tan2;
+                rod_vec[2] = ang_axis_comp[2] * inv_norm_ang_axis * tan2;
+            } else {
+                rod_vec[0] = 0.0_f64;
+                rod_vec[1] = 0.0_f64;
+                rod_vec[2] = 0.0_f64;
             }
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis_comp);
         });
     }
     
@@ -624,24 +678,32 @@ impl OriConv for AngAxisComp{
         let inv2 = 1.0_f64 / 2.0_f64;
         let tol = std::f64::EPSILON;
 
-        azip!((mut quat in ori.axis_iter_mut(Axis(1)), ref angaxis_comp in self.ori.axis_iter(Axis(1))) {
-            let norm_angaxis = f64::sqrt({
-                angaxis_comp[0] * angaxis_comp[0] 
-                + angaxis_comp[1] * angaxis_comp[1] 
-                + angaxis_comp[2] * angaxis_comp[2]
+        let f = |mut quat: ArrayViewMut1::<f64>, ref ang_axis_comp: ArrayView1::<f64>| {
+            let norm_ang_axis = f64::sqrt({
+                ang_axis_comp[0] * ang_axis_comp[0] 
+                + ang_axis_comp[1] * ang_axis_comp[1] 
+                + ang_axis_comp[2] * ang_axis_comp[2]
                 });
 
-            let inv_norm_angaxis = 1.0_f64 / norm_angaxis;
+            let inv_norm_ang_axis = 1.0_f64 / norm_ang_axis;
 
-            let s = f64::sin(inv2 * norm_angaxis); 
+            let s = f64::sin(inv2 * norm_ang_axis); 
 
-            quat[0] = f64::cos(inv2 * norm_angaxis);
-
-            if norm_angaxis.abs() > tol{
-                quat[1] = s * angaxis_comp[0] * inv_norm_angaxis;
-                quat[2] = s * angaxis_comp[1] * inv_norm_angaxis;
-                quat[3] = s * angaxis_comp[2] * inv_norm_angaxis;
+            if norm_ang_axis.abs() > tol{
+                quat[0] = f64::cos(inv2 * norm_ang_axis);
+                quat[1] = s * ang_axis_comp[0] * inv_norm_ang_axis;
+                quat[2] = s * ang_axis_comp[1] * inv_norm_ang_axis;
+                quat[3] = s * ang_axis_comp[2] * inv_norm_ang_axis;
+            }else{
+                quat[0] = 1.0_f64;
+                quat[1] = 0.0_f64;
+                quat[2] = 0.0_f64;
+                quat[3] = 0.0_f64;
             }
+        };
+
+        azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(quat, ang_axis_comp);
         });
     }
 

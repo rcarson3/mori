@@ -81,7 +81,7 @@ impl OriConv for Bunge{
         
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref bunge in self.ori.axis_iter(Axis(1))) {
+        let f = |mut rmat: ArrayViewMut2::<f64>, ref bunge: ArrayView1::<f64>| {
             let s1 = bunge[0].sin();
             let c1 = bunge[0].cos();
             let s2 = bunge[1].sin();
@@ -100,6 +100,10 @@ impl OriConv for Bunge{
             rmat[[0, 2]] = s2 * s3;
             rmat[[1, 2]] = s2 * c3;
             rmat[[2, 2]] = c2;
+        };
+
+        azip!((rmat in ori.axis_iter_mut(Axis(2)), bunge in self.ori.axis_iter(Axis(1))) {
+            f(rmat, bunge);
         });
 
         RMat::new_init(ori)
@@ -187,7 +191,7 @@ impl OriConv for Bunge{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref bunge in self.ori.axis_iter(Axis(1))) {
+        let f = |mut rmat: ArrayViewMut2::<f64>, ref bunge: ArrayView1::<f64>| {
             let s1 = bunge[0].sin();
             let c1 = bunge[0].cos();
             let s2 = bunge[1].sin();
@@ -206,6 +210,10 @@ impl OriConv for Bunge{
             rmat[[0, 2]] = s2 * s3;
             rmat[[1, 2]] = s2 * c3;
             rmat[[2, 2]] = c2;
+        };
+
+        azip!((rmat in ori.axis_iter_mut(Axis(2)), bunge in self.ori.axis_iter(Axis(1))) {
+            f(rmat, bunge);
         });
 
     }
@@ -237,7 +245,7 @@ impl OriConv for Bunge{
     ///Converts the Bunge angles over to a compact Rodrigues vector representation which has the following properties
     ///shape (3, nelems), memory order = fortran/column major.
     ///This operation is done inplace and does not create a new structure
-    fn to_rod_vec_comp_inplace(&self, rod_vec_comp: &mut RodVecComp){
+    fn to_rod_vec_comp_inplace(&self,rod_vec_comp: &mut RodVecComp){
         let rmat = self.to_rmat();
         rmat.to_rod_vec_comp_inplace(rod_vec_comp);
     }

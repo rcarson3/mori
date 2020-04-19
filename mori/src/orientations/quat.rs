@@ -240,7 +240,7 @@ impl OriConv for Quat{
 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!((mut bunge in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut bunge: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let q03 = quat[0] * quat[0] + quat[3] * quat[3];
             let q12 = quat[1] * quat[1] + quat[2] * quat[2];
             let xi = f64::sqrt(q03 * q12);
@@ -266,6 +266,10 @@ impl OriConv for Quat{
                 //We can finally find the final bunge angle
                 bunge[2] = t1.atan2(t2);
             }
+        };
+
+        azip!((bunge in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(bunge, quat);
         });
 
         Bunge::new_init(ori)
@@ -279,7 +283,7 @@ impl OriConv for Quat{
 
         let mut ori = Array3::<f64>::zeros((3, 3, nelems).f());
 
-        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut rmat: ArrayViewMut2::<f64>, ref quat: ArrayView1::<f64>| {
             let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
             rmat[[0, 0]] = qbar + 2.0_f64 * quat[1] * quat[1];
@@ -293,6 +297,10 @@ impl OriConv for Quat{
             rmat[[0, 2]] = 2.0_f64 * (quat[1] * quat[3] + quat[0] * quat[2]);
             rmat[[1, 2]] = 2.0_f64 * (quat[2] * quat[3] - quat[0] * quat[1]);
             rmat[[2, 2]] = qbar + 2.0_f64 * quat[3] * quat[3];
+        };
+
+        azip!((rmat in ori.axis_iter_mut(Axis(2)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rmat, quat);
         });
 
         RMat::new_init(ori)
@@ -308,23 +316,27 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut ang_axis: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
-                angaxis[0] = quat[1];
-                angaxis[1] = quat[2];
-                angaxis[2] = quat[3];
-                angaxis[3] = std::f64::consts::PI;
+                ang_axis[0] = quat[1];
+                ang_axis[1] = quat[2];
+                ang_axis[2] = quat[3];
+                ang_axis[3] = std::f64::consts::PI;
             }else if phi.abs() < tol{
-                angaxis[2] = 1.0_f64;
+                ang_axis[2] = 1.0_f64;
             }else{
                 let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
-                angaxis[0] = s * quat[1];
-                angaxis[1] = s * quat[2];
-                angaxis[2] = s * quat[3];
-                angaxis[3] = phi;
+                ang_axis[0] = s * quat[1];
+                ang_axis[1] = s * quat[2];
+                ang_axis[2] = s * quat[3];
+                ang_axis[3] = phi;
             }
+        };
+
+        azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, quat);
         });
 
         AngAxis::new_init(ori)
@@ -340,19 +352,23 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut ang_axis: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
-                angaxis[0] = quat[1] * std::f64::consts::PI;
-                angaxis[1] = quat[2] * std::f64::consts::PI;
-                angaxis[2] = quat[3] * std::f64::consts::PI;
+                ang_axis[0] = quat[1] * std::f64::consts::PI;
+                ang_axis[1] = quat[2] * std::f64::consts::PI;
+                ang_axis[2] = quat[3] * std::f64::consts::PI;
             }else{
                 let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
-                angaxis[0] = s * quat[1] * phi;
-                angaxis[1] = s * quat[2] * phi;
-                angaxis[2] = s * quat[3] * phi; 
+                ang_axis[0] = s * quat[1] * phi;
+                ang_axis[1] = s * quat[2] * phi;
+                ang_axis[2] = s * quat[3] * phi; 
             }
+        };
+
+        azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, quat);
         });
 
         AngAxisComp::new_init(ori)
@@ -368,7 +384,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let phi = quat[0].acos();
             if quat[0].abs() < tol{
                 rod_vec[0] = quat[1];
@@ -385,6 +401,10 @@ impl OriConv for Quat{
                 rod_vec[2] = s * quat[3];
                 rod_vec[3] = phi.tan();
             }
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, quat);
         });
 
         RodVec::new_init(ori)
@@ -398,7 +418,7 @@ impl OriConv for Quat{
         let mut ori = Array2::<f64>::zeros((3, nelems).f());
         let tol = std::f64::EPSILON;
 
-        azip!((mut rod_vec_comp in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut rod_vec_comp: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let tan_phi = f64::tan(quat[0].acos());
             //This case will not allow for anything to be retrievable later on...
             if quat[0].abs() < tol{
@@ -412,6 +432,10 @@ impl OriConv for Quat{
                 rod_vec_comp[1] = s * quat[2] * tan_phi;
                 rod_vec_comp[2] = s * quat[3] * tan_phi; 
             }
+        };
+
+        azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec_comp, quat);
         });
 
         RodVecComp::new_init(ori)
@@ -445,18 +469,19 @@ impl OriConv for Quat{
 
         let tol = f64::sqrt(std::f64::EPSILON);
 
-        azip!((mut bunge in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut bunge: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let q03 = quat[0] * quat[0] + quat[3] * quat[3];
             let q12 = quat[1] * quat[1] + quat[2] * quat[2];
             let xi = f64::sqrt(q03 * q12);
             //We get to now go through all of the different cases that this might break down into
             if xi.abs() < tol && q12.abs() < tol {
                 bunge[0] = f64::atan2(-2.0_f64 * quat[0] * quat[3], quat[0] * quat[0] - quat[3] * quat[3]);
-                //All of the other values are zero
+                bunge[1] = 0.0_f64;
+                bunge[2] = 0.0_f64;
             }else if xi.abs() < tol && q03.abs() < tol{
                 bunge[0] = f64::atan2(2.0_f64 * quat[1] * quat[2], quat[1] * quat[1] - quat[2] * quat[2]);
                 bunge[1] = std::f64::consts::PI;
-                //The other value is zero
+                bunge[2] = 0.0_f64;
             }else{
                 let inv_xi = 1.0_f64 / xi;
                 //The atan2 terms are pretty long so we're breaking it down into a couple of temp terms
@@ -471,7 +496,12 @@ impl OriConv for Quat{
                 //We can finally find the final bunge angle
                 bunge[2] = t1.atan2(t2);
             }
+        };
+
+        azip!((bunge in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(bunge, quat);
         });
+
 
     }
 
@@ -489,7 +519,7 @@ impl OriConv for Quat{
         The old field had {} elements, and the new field has {} elements",
         nelem, new_nelem);
 
-        azip!((mut rmat in ori.axis_iter_mut(Axis(2)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut rmat: ArrayViewMut2::<f64>, ref quat: ArrayView1::<f64>| {
             let qbar =  quat[0] * quat[0] - (quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
             rmat[[0, 0]] = qbar + 2.0_f64 * quat[1] * quat[1];
@@ -503,6 +533,10 @@ impl OriConv for Quat{
             rmat[[0, 2]] = 2.0_f64 * (quat[1] * quat[3] + quat[0] * quat[2]);
             rmat[[1, 2]] = 2.0_f64 * (quat[2] * quat[3] - quat[0] * quat[1]);
             rmat[[2, 2]] = qbar + 2.0_f64 * quat[3] * quat[3];
+        };
+
+        azip!((rmat in ori.axis_iter_mut(Axis(2)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rmat, quat);
         });
     }
 
@@ -522,23 +556,30 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut ang_axis: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
-                angaxis[0] = quat[1];
-                angaxis[1] = quat[2];
-                angaxis[2] = quat[3];
-                angaxis[3] = std::f64::consts::PI;
+                ang_axis[0] = quat[1];
+                ang_axis[1] = quat[2];
+                ang_axis[2] = quat[3];
+                ang_axis[3] = std::f64::consts::PI;
             }else if phi.abs() < tol{
-                angaxis[2] = 1.0_f64;
+                ang_axis[0] = 0.0_f64;
+                ang_axis[1] = 0.0_f64;
+                ang_axis[2] = 1.0_f64;
+                ang_axis[3] = 0.0_f64;
             }else{
                 let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
-                angaxis[0] = s * quat[1];
-                angaxis[1] = s * quat[2];
-                angaxis[2] = s * quat[3];
-                angaxis[3] = phi;
+                ang_axis[0] = s * quat[1];
+                ang_axis[1] = s * quat[2];
+                ang_axis[2] = s * quat[3];
+                ang_axis[3] = phi;
             }
+        };
+
+        azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, quat);
         });
     }
 
@@ -558,19 +599,23 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut angaxis in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut ang_axis: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let phi = 2.0_f64 * quat[0].acos();
             if quat[0].abs() < tol{
-                angaxis[0] = quat[1] * std::f64::consts::PI;
-                angaxis[1] = quat[2] * std::f64::consts::PI;
-                angaxis[2] = quat[3] * std::f64::consts::PI;
+                ang_axis[0] = quat[1] * std::f64::consts::PI;
+                ang_axis[1] = quat[2] * std::f64::consts::PI;
+                ang_axis[2] = quat[3] * std::f64::consts::PI;
             }else{
                 let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
-                angaxis[0] = s * quat[1] * phi;
-                angaxis[1] = s * quat[2] * phi;
-                angaxis[2] = s * quat[3] * phi; 
+                ang_axis[0] = s * quat[1] * phi;
+                ang_axis[1] = s * quat[2] * phi;
+                ang_axis[2] = s * quat[3] * phi; 
             }
+        };
+
+        azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, quat);
         });
     }
 
@@ -590,7 +635,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut rod_vec in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut rod_vec: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let phi = quat[0].acos();
             if quat[0].abs() < tol{
                 rod_vec[0] = quat[1];
@@ -598,7 +643,10 @@ impl OriConv for Quat{
                 rod_vec[2] = quat[3];
                 rod_vec[3] = std::f64::INFINITY;
             }else if phi.abs() < tol{
+                rod_vec[0] = 0.0_f64;
+                rod_vec[1] = 0.0_f64;
                 rod_vec[2] = 1.0_f64;
+                rod_vec[3] = 0.0_f64;
             }else{
                 let s   = quat[0].signum() / f64::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
@@ -607,6 +655,10 @@ impl OriConv for Quat{
                 rod_vec[2] = s * quat[3];
                 rod_vec[3] = phi.tan();
             }
+        };
+
+        azip!((rod_vec in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, quat);
         });
     }
 
@@ -626,7 +678,7 @@ impl OriConv for Quat{
 
         let tol = std::f64::EPSILON;
 
-        azip!((mut rod_vec_comp in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+        let f = |mut rod_vec_comp: ArrayViewMut1::<f64>, ref quat: ArrayView1::<f64>| {
             let tan_phi = f64::tan(quat[0].acos());
             //This case will not allow for anything to be retrievable later on...
             if quat[0].abs() < tol{
@@ -640,6 +692,10 @@ impl OriConv for Quat{
                 rod_vec_comp[1] = s * quat[2] * tan_phi;
                 rod_vec_comp[2] = s * quat[3] * tan_phi; 
             }
+        };
+
+        azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec_comp, quat);
         });
     }
 
