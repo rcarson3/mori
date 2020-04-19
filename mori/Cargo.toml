@@ -14,6 +14,12 @@ description = "An orientation library built around commonly used orientation rep
 keywords = ["array", "orientation", "3D_rotation", "crystallography", "parallel"]
 categories = ["data-structures", "science"]
 
+exclude = [
+    "*.txt",
+    "/tests/*",
+    "/benches/*",
+]
+
 [dependencies]
 ndarray = {version = "0.13.0", features=["approx"]}
 [features] 
