@@ -102,6 +102,12 @@ impl OriConv for Bunge{
             rmat[[2, 2]] = c2;
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), bunge in self.ori.axis_iter(Axis(1))) {
+            f(rmat, bunge);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), bunge in self.ori.axis_iter(Axis(1))) {
             f(rmat, bunge);
         });
@@ -212,6 +218,12 @@ impl OriConv for Bunge{
             rmat[[2, 2]] = c2;
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), bunge in self.ori.axis_iter(Axis(1))) {
+            f(rmat, bunge);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), bunge in self.ori.axis_iter(Axis(1))) {
             f(rmat, bunge);
         });

@@ -3,14 +3,13 @@ An orientation library built around commonly used orientation representations us
 
 Orientations play a large role in a number of fields ranging from: crystallography, x-ray diffraction, metallurgy, solid mechanics, and the list can go on and on. Therefore, it's important to have a library that easily allows conversions from Eulearian representations to rotation matrices to neo-eulerian representation to quaternions. 
 
-The initial scope of this library will provide common sets of conversions. In an attempt to have a consistent set of conversions with others in the field, a majority of these conversions have been taken from <sup name="a1">[1](#f1)</sup>. The library also includes various vector and tensor passive rotation operations. Operations such as these are commonly associatted with orientations. Therefore, a number of orientations support these features. Outside of these features, various helper methods have been added to several orientations representations such as being able to easily obtain the transpose of an orientation. It should be noted that these helper functions are not necessarily the same across different orientation conversions. 
+The initial scope of this library will provide common sets of conversions. In an attempt to have a consistent set of conversions with others in the field, a majority of these conversions have been taken from <sup name="a1">[1](#f1)</sup>. The library also includes various vector and tensor passive rotation operations. Operations such as these are commonly associated with orientations. Therefore, a number of orientations support these features. Outside of these features, various helper methods have been added to several orientations representations such as being able to easily obtain the transpose of an orientation. It should be noted that these helper functions are not necessarily the same across different orientation conversions. 
 
-Before the library is released on cargo, the plan is to include the following capabilities:
-
-* Orientation conversions between various orientation representations
-* Vector and tensor passive rotation operations
-* Helper functions such as transpose, various quaternion operations, and methods to view/mutate the private field holding each orientations
-* Parallel capabilities that match the serial code    
+The code offers the following abilities:
+* A set of conversions between commonly used orientation representations
+* Vector and tensor rotation operations for a select few orientations.
+* Parallel capabilities when the parallel feature flag is used.
+* Convenient operations for select orientation conventions
 
 Later as it develops, the plan is to include the following:
 

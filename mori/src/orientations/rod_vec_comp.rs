@@ -150,6 +150,12 @@ impl OriConv for RodVecComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rod_vec_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, rod_vec_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rod_vec_comp in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, rod_vec_comp);
         });
@@ -253,6 +259,12 @@ impl OriConv for RodVecComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rod_vec_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, rod_vec_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rod_vec_comp in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, rod_vec_comp);
         });

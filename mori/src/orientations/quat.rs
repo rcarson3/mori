@@ -29,6 +29,10 @@ impl Quat{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
+        #[cfg(feature = "parallel")]
+        par_azip!((mut quat in ori.axis_iter_mut(Axis(1))) {quat[0] = 1.0_f64});
+
+        #[cfg(not(feature = "parallel"))]
         azip!((mut quat in ori.axis_iter_mut(Axis(1))) {quat[0] = 1.0_f64});
 
         Quat{
@@ -72,7 +76,16 @@ impl Quat{
         let nelems = self.ori.len_of(Axis(1));
 
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
-        
+
+        #[cfg(feature = "parallel")]
+        par_azip!((mut quat_c in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+            quat_c[0] = quat[0];
+            quat_c[1] = -1.0_f64 * quat[1];
+            quat_c[2] = -1.0_f64 * quat[2];
+            quat_c[3] = -1.0_f64 * quat[3];
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((mut quat_c in ori.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
             quat_c[0] = quat[0];
             quat_c[1] = -1.0_f64 * quat[1];
@@ -87,6 +100,15 @@ impl Quat{
     ///of the vector portions of the unit quaternion. The inverse is said to be the same here because
     ///for unit quaternions that is the case. If we didn't have unit quaternions that would not be the case.
     pub fn conjugate_inplace(&mut self){
+
+        #[cfg(feature = "parallel")]
+        par_azip!((mut quat_c in self.ori.axis_iter_mut(Axis(1))) {
+            quat_c[1] *= -1.0_f64;
+            quat_c[2] *= -1.0_f64;
+            quat_c[3] *= -1.0_f64;
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((mut quat_c in self.ori.axis_iter_mut(Axis(1))) {
             quat_c[1] *= -1.0_f64;
             quat_c[2] *= -1.0_f64;
@@ -122,6 +144,14 @@ impl Quat{
                 //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
+
+            #[cfg(feature = "parallel")]
+            par_azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1)), 
+            ref quat1 in self.ori.axis_iter(Axis(1))) {
+                quat_product(&quat1, &quat2, quat_prod);     
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1)), 
             ref quat1 in self.ori.axis_iter(Axis(1))) {
                 quat_product(&quat1, &quat2, quat_prod);     
@@ -130,6 +160,12 @@ impl Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat1 = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1))) {  
+                quat_product(&quat1, &quat2, quat_prod);      
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1))) {  
                 quat_product(&quat1, &quat2, quat_prod);      
             });
@@ -137,6 +173,12 @@ impl Quat{
             //We just have one vector so perform pretty much the above to get all of our values
             let quat2 = ori_quat2.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat1 in self.ori.axis_iter(Axis(1))) {  
+                quat_product(&quat1, &quat2, quat_prod);  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((quat_prod in quat_prod.axis_iter_mut(Axis(1)), ref quat1 in self.ori.axis_iter(Axis(1))) {  
                 quat_product(&quat1, &quat2, quat_prod);  
             });
@@ -183,6 +225,13 @@ impl Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 23 in the README.
+            #[cfg(feature = "parallel")]
+            par_azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1)), 
+            ref quat1 in self.ori.axis_iter(Axis(1))) {
+                quat_product(&quat1, &quat2, quat_prod);     
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1)), 
             ref quat1 in self.ori.axis_iter(Axis(1))) {
                 quat_product(&quat1, &quat2, quat_prod);     
@@ -191,6 +240,12 @@ impl Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat1 = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1))) {  
+                quat_product(&quat1, &quat2, quat_prod);      
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat2 in ori_quat2.axis_iter(Axis(1))) {  
                 quat_product(&quat1, &quat2, quat_prod);      
             });
@@ -198,6 +253,12 @@ impl Quat{
             //We just have one vector so perform pretty much the above to get all of our values
             let quat2 = ori_quat2.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat1 in self.ori.axis_iter(Axis(1))) {  
+                quat_product(&quat1, &quat2, quat_prod);  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((quat_prod in ori_quat_prod.axis_iter_mut(Axis(1)), ref quat1 in self.ori.axis_iter(Axis(1))) {  
                 quat_product(&quat1, &quat2, quat_prod);  
             });
@@ -268,6 +329,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((bunge in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(bunge, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((bunge in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(bunge, quat);
         });
@@ -299,6 +366,12 @@ impl OriConv for Quat{
             rmat[[2, 2]] = qbar + 2.0_f64 * quat[3] * quat[3];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rmat, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), quat in self.ori.axis_iter(Axis(1))) {
             f(rmat, quat);
         });
@@ -335,6 +408,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, quat);
         });
@@ -367,6 +446,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, quat);
         });
@@ -403,6 +488,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, quat);
         });
@@ -434,6 +525,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec_comp, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(rod_vec_comp, quat);
         });
@@ -498,11 +595,15 @@ impl OriConv for Quat{
             }
         };
 
-        azip!((bunge in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+        #[cfg(feature = "parallel")]
+        par_azip!((bunge in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(bunge, quat);
         });
 
-
+        #[cfg(not(feature = "parallel"))]
+        azip!((bunge in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(bunge, quat);
+        });
     }
 
     ///Converts the unit quaternion representation over to rotation matrix which has the following properties
@@ -535,6 +636,12 @@ impl OriConv for Quat{
             rmat[[2, 2]] = qbar + 2.0_f64 * quat[3] * quat[3];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rmat, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), quat in self.ori.axis_iter(Axis(1))) {
             f(rmat, quat);
         });
@@ -578,6 +685,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, quat);
         });
@@ -614,6 +727,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, quat);
         });
@@ -657,6 +776,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, quat);
         });
@@ -694,6 +819,12 @@ impl OriConv for Quat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec_comp, quat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), quat in self.ori.axis_iter(Axis(1))) {
             f(rod_vec_comp, quat);
         });
@@ -757,6 +888,14 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref quat in self.ori.axis_iter(Axis(1))) {
+                quat_rot_vec(&quat, &vec, rvec);     
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
             ref quat in self.ori.axis_iter(Axis(1))) {
                 quat_rot_vec(&quat, &vec, rvec);     
@@ -765,6 +904,12 @@ impl RotVector for Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
+                quat_rot_vec(&quat, &vec, rvec);      
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 quat_rot_vec(&quat, &vec, rvec);      
             });
@@ -772,6 +917,12 @@ impl RotVector for Quat{
             //We just have one vector so perform pretty much the above to get all of our values
             let vec = vec.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {  
+                quat_rot_vec(&quat, &vec, rvec);  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
@@ -815,6 +966,14 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref quat in self.ori.axis_iter(Axis(1))) {
+                quat_rot_vec(&quat, &vec, rvec);         
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
             ref quat in self.ori.axis_iter(Axis(1))) {
                 quat_rot_vec(&quat, &vec, rvec);         
@@ -823,6 +982,12 @@ impl RotVector for Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
+                quat_rot_vec(&quat, &vec, rvec);  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
@@ -830,6 +995,12 @@ impl RotVector for Quat{
             //We just have one vector so perform pretty much the above to get all of our values
             let vec = vec.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {  
+                quat_rot_vec(&quat, &vec, rvec);  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {  
                 quat_rot_vec(&quat, &vec, rvec);  
             });
@@ -858,6 +1029,15 @@ impl RotVector for Quat{
         //We need to see if we have more than one Quaternion that we're multiplying by
         if rnelems == nelems {
             //The rotations here can be given by reference 1  equation 24 in the README.
+
+            #[cfg(feature = "parallel")]
+            par_azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
+                let mut rvec = Array1::<f64>::zeros((3).f());
+                quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
+                vec.assign({&rvec});    
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
@@ -867,6 +1047,14 @@ impl RotVector for Quat{
             //We just have one Quaternion so perform pretty much the above to get all of our values
             let quat = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
+                let mut rvec = Array1::<f64>::zeros((3).f()); 
+                quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
+                vec.assign({&rvec});  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f()); 
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());

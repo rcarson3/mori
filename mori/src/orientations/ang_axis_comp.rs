@@ -29,6 +29,10 @@ impl AngAxisComp{
 
         let mut ori = Array2::<f64>::zeros((3, size).f());
 
+        #[cfg(feature = "parallel")]
+        par_azip!((mut ang_axis in ori.axis_iter_mut(Axis(1))) {ang_axis[2] = 1.0_f64});
+
+        #[cfg(not(feature = "parallel"))]
         azip!((mut ang_axis in ori.axis_iter_mut(Axis(1))) {ang_axis[2] = 1.0_f64});
 
         AngAxisComp{
@@ -135,6 +139,12 @@ impl OriConv for AngAxisComp{
             rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rmat, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(rmat, ang_axis_comp);
         });
@@ -203,6 +213,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((bunge in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(bunge, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((bunge in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(bunge, ang_axis_comp);
         });
@@ -243,6 +259,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, ang_axis_comp);
         });
@@ -288,6 +310,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, ang_axis_comp);
         });
@@ -324,6 +352,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, ang_axis_comp);
         });
@@ -362,6 +396,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(quat, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(quat, ang_axis_comp);
         });
@@ -443,6 +483,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((bunge in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(bunge, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((bunge in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(bunge, ang_axis_comp);
         });
@@ -502,6 +548,12 @@ impl OriConv for AngAxisComp{
             rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rmat, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(rmat, ang_axis_comp);
         });
@@ -546,6 +598,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, ang_axis_comp);
         });
@@ -611,6 +669,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, ang_axis_comp);
         });
@@ -656,6 +720,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, ang_axis_comp);
         });
@@ -702,6 +772,12 @@ impl OriConv for AngAxisComp{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
+            f(quat, ang_axis_comp);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis_comp in self.ori.axis_iter(Axis(1))) {
             f(quat, ang_axis_comp);
         });

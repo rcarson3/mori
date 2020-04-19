@@ -31,6 +31,10 @@ impl AngAxis{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
+        #[cfg(feature = "parallel")]
+        par_azip!((mut ang_axis in ori.axis_iter_mut(Axis(1))) {ang_axis[2] = 1.0_f64});
+
+        #[cfg(not(feature = "parallel"))]
         azip!((mut ang_axis in ori.axis_iter_mut(Axis(1))) {ang_axis[2] = 1.0_f64});
 
         AngAxis{
@@ -74,7 +78,16 @@ impl AngAxis{
     pub fn transpose(&self) -> RodVec{
         let nelems = self.ori.len_of(Axis(1));
         let mut ori = Array2::<f64>::zeros((4, nelems).f());
-        
+
+        #[cfg(feature = "parallel")]
+        par_azip!((mut ang_axis_t in ori.axis_iter_mut(Axis(1)), ref ang_axis in self.ori.axis_iter(Axis(1))) {
+            ang_axis_t[0] = -1.0_f64 * ang_axis[0];
+            ang_axis_t[1] = -1.0_f64 * ang_axis[1];
+            ang_axis_t[2] = -1.0_f64 * ang_axis[2];
+            ang_axis_t[3] = ang_axis[3];
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((mut ang_axis_t in ori.axis_iter_mut(Axis(1)), ref ang_axis in self.ori.axis_iter(Axis(1))) {
             ang_axis_t[0] = -1.0_f64 * ang_axis[0];
             ang_axis_t[1] = -1.0_f64 * ang_axis[1];
@@ -89,14 +102,20 @@ impl AngAxis{
     ///It turns out this is simply the negative of the normal vector due to the vector being formed
     ///from an axial vector of the rotation matrix --> Rmat\^T = -Rx where Rx is the axial vector.
     pub fn transpose_inplace(&mut self){
+        #[cfg(feature = "parallel")]
+        par_azip!((mut ang_axis_t in self.ori.axis_iter_mut(Axis(1))) {
+            ang_axis_t[0] *= -1.0_f64;
+            ang_axis_t[1] *= -1.0_f64;
+            ang_axis_t[2] *= -1.0_f64;
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((mut ang_axis_t in self.ori.axis_iter_mut(Axis(1))) {
             ang_axis_t[0] *= -1.0_f64;
             ang_axis_t[1] *= -1.0_f64;
             ang_axis_t[2] *= -1.0_f64;
         });
     }
-
-
 }//End of AngAxis impl
 
 ///The orientation conversions of a series of axis-angle representation to a number of varying different orientation
@@ -144,12 +163,17 @@ impl OriConv for AngAxis{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((bunge in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(bunge, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((bunge in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(bunge, ang_axis);
         });
 
         Bunge::new_init(ori)
-
     }//End of to_bunge
 
     ///Converts the axis-angle representation over to a rotation matrix which has the following properties
@@ -177,6 +201,12 @@ impl OriConv for AngAxis{
             rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rmat, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(rmat, ang_axis);
         });
@@ -206,6 +236,12 @@ impl OriConv for AngAxis{
             ang_axis_comp[2] = ang_axis[2] * ang_axis[3];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis_comp in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis_comp, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis_comp in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(ang_axis_comp, ang_axis);
         });
@@ -233,6 +269,12 @@ impl OriConv for AngAxis{
             rod_vec[3] = f64::tan(inv2 * ang_axis[3]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, ang_axis);
         });
@@ -257,6 +299,12 @@ impl OriConv for AngAxis{
             rod_vec[2] = ang_axis[2] * tan2;
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, ang_axis);
         });
@@ -283,6 +331,12 @@ impl OriConv for AngAxis{
             quat[3] = s * ang_axis[2];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(quat, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(quat, ang_axis);
         });
@@ -310,6 +364,12 @@ impl OriConv for AngAxis{
             homoch[3] = pow_term.powf(inv3);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((homoch in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(homoch, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((homoch in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(homoch, ang_axis);
         });
@@ -366,6 +426,12 @@ impl OriConv for AngAxis{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((bunge in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(bunge, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((bunge in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(bunge, ang_axis);
         });
@@ -402,6 +468,12 @@ impl OriConv for AngAxis{
             rmat[[2, 2]] = c + (1.0_f64 - c) * (ang_axis[2] * ang_axis[2]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rmat, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(rmat, ang_axis);
         });
@@ -421,7 +493,6 @@ impl OriConv for AngAxis{
         nelem, new_nelem);
 
         ori.assign(&self.ori);
-
     }
 
     ///Converts the axis-angle representation over to a compact angle-axis representation which has the following properties
@@ -444,10 +515,15 @@ impl OriConv for AngAxis{
             ang_axis_comp[2] = ang_axis[2] * ang_axis[3];
         };
 
-        azip!((ang_axis_comp in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis_comp in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(ang_axis_comp, ang_axis);
         });
 
+        #[cfg(not(feature = "parallel"))]
+        azip!((ang_axis_comp in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis_comp, ang_axis);
+        });
     }
 
     ///Converts the axis-angle representation over to a Rodrigues vector representation which has the following properties
@@ -473,6 +549,12 @@ impl OriConv for AngAxis{
             rod_vec[3] = f64::tan(inv2 * ang_axis[3]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, ang_axis);
         });
@@ -501,6 +583,12 @@ impl OriConv for AngAxis{
             rod_vec[2] = ang_axis[2] * tan2;
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(rod_vec, ang_axis);
         });
@@ -531,6 +619,12 @@ impl OriConv for AngAxis{
             quat[3] = s * ang_axis[2];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(quat, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((quat in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(quat, ang_axis);
         });
@@ -562,6 +656,12 @@ impl OriConv for AngAxis{
             homoch[3] = pow_term.powf(inv3);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((homoch in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
+            f(homoch, ang_axis);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((homoch in ori.axis_iter_mut(Axis(1)), ang_axis in self.ori.axis_iter(Axis(1))) {
             f(homoch, ang_axis);
         });
@@ -602,6 +702,14 @@ impl RotVector for AngAxis{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref ang_axis in self.ori.axis_iter(Axis(1))) {
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);    
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
             ref ang_axis in self.ori.axis_iter(Axis(1))) {
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);    
@@ -610,6 +718,12 @@ impl RotVector for AngAxis{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
             let ang_axis = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);   
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);   
             });
@@ -617,6 +731,12 @@ impl RotVector for AngAxis{
             //We just have one vector so perform pretty much the above to get all of our values
             let vec = vec.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref ang_axis in self.ori.axis_iter(Axis(1))) {  
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);  
+            });
+            
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref ang_axis in self.ori.axis_iter(Axis(1))) {  
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);  
             });
@@ -661,6 +781,14 @@ impl RotVector for AngAxis{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref ang_axis in self.ori.axis_iter(Axis(1))) {
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);   
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
             ref ang_axis in self.ori.axis_iter(Axis(1))) {
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);   
@@ -669,6 +797,12 @@ impl RotVector for AngAxis{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
             let ang_axis = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);
             });
@@ -676,6 +810,12 @@ impl RotVector for AngAxis{
             //We just have one vector so perform pretty much the above to get all of our values
             let vec = vec.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref ang_axis in self.ori.axis_iter(Axis(1))) {  
+                ang_axis_rot_vec(&ang_axis, &vec, rvec);  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref ang_axis in self.ori.axis_iter(Axis(1))) {  
                 ang_axis_rot_vec(&ang_axis, &vec, rvec);  
             });
@@ -705,6 +845,15 @@ impl RotVector for AngAxis{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
+
+            #[cfg(feature = "parallel")]
+            par_azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref ang_axis in self.ori.axis_iter(Axis(1))) {
+                let mut rvec = Array1::<f64>::zeros((3).f());
+                ang_axis_rot_vec(&ang_axis, &vec.view(), rvec.view_mut());
+                vec.assign({&rvec});    
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref ang_axis in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 ang_axis_rot_vec(&ang_axis, &vec.view(), rvec.view_mut());
@@ -714,6 +863,14 @@ impl RotVector for AngAxis{
             //We just have one Axis-angle representation so perform pretty much the above to get all of our values
             let ang_axis = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
+                let mut rvec = Array1::<f64>::zeros((3).f());
+                ang_axis_rot_vec(&ang_axis, &vec.view(), rvec.view_mut());
+                vec.assign({&rvec});  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 ang_axis_rot_vec(&ang_axis, &vec.view(), rvec.view_mut());

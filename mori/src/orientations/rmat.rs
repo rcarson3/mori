@@ -33,6 +33,10 @@ impl RMat{
 
         let f = |mut rmat: ArrayViewMut2::<f64>| {rmat.assign(&eye)};
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2))) {f(rmat)});
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2))) {f(rmat)});
 
         RMat{
@@ -80,6 +84,12 @@ impl RMat{
 
         let f = |mut rmat_t: ArrayViewMut2::<f64>, ref rmat: ArrayView2::<f64>| {rmat_t.assign(&rmat.t())};
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat_t in ori.axis_iter_mut(Axis(2)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(rmat_t, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat_t in ori.axis_iter_mut(Axis(2)), rmat in self.ori.axis_iter(Axis(2))) {
             f(rmat_t, rmat);
         });
@@ -96,6 +106,12 @@ impl RMat{
             rmat.swap([2, 1], [1, 2]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in self.ori.axis_iter_mut(Axis(2))) {
+            f(rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in self.ori.axis_iter_mut(Axis(2))) {
             f(rmat);
         });
@@ -131,6 +147,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((bunge in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(bunge, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((bunge in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(bunge, rmat);
         });
@@ -171,6 +193,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(ang_axis, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(ang_axis, rmat);
         });
@@ -201,6 +229,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(ang_axis, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(ang_axis, rmat);
         });
@@ -235,6 +269,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(rod_vec, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(rod_vec, rmat);
         });
@@ -267,6 +307,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(rod_vec, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(rod_vec, rmat);
         });
@@ -312,6 +358,12 @@ impl OriConv for RMat{
             quat[3] = s * ang_axis[2];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((quat in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(quat, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((quat in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(quat, rmat);
         });
@@ -356,6 +408,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((bunge in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(bunge, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((bunge in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(bunge, rmat);
         });
@@ -416,6 +474,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(ang_axis, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(ang_axis, rmat);
         });
@@ -457,6 +521,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(ang_axis, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(ang_axis, rmat);
         });
@@ -500,6 +570,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(rod_vec, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(rod_vec, rmat);
         });
@@ -542,6 +618,12 @@ impl OriConv for RMat{
             }
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(rod_vec, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(rod_vec, rmat);
         });
@@ -590,6 +672,12 @@ impl OriConv for RMat{
             quat[3] = s * ang_axis[2];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((quat in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+            f(quat, rmat);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((quat in ori.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
             f(quat, rmat);
         });
@@ -639,6 +727,14 @@ impl RotVector for RMat{
             let f = |mut rvec: ArrayViewMut1::<f64>, ref vec: ArrayView1::<f64>, ref rmat: ArrayView2::<f64>| {
                 ndarray::linalg::general_mat_vec_mul(1.0_f64, rmat, vec, 0.0_f64, &mut rvec);
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), vec in vec.axis_iter(Axis(1)), 
+            rmat in self.ori.axis_iter(Axis(2))) {
+                    f(rvec, vec, rmat);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), vec in vec.axis_iter(Axis(1)), 
             rmat in self.ori.axis_iter(Axis(2))) {
                 f(rvec, vec, rmat);
@@ -655,6 +751,13 @@ impl RotVector for RMat{
             let f = |mut rvec: ArrayViewMut1::<f64>, ref rmat: ArrayView2::<f64>| {
                 rvec.assign({&rmat.dot(&vec)});
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+                f(rvec, rmat);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
                 f(rvec, rmat);
             });
@@ -694,8 +797,6 @@ impl RotVector for RMat{
         currently {} elements in vector and {} elements in Rotation Matrix",
         nelems, rnelems);
 
-
-
         //We need to see if we have more than one rotation matrix that we're multiplying by
         if rnelems == nelems {
             //Here we're iterating through each vector, rotation matrix, and rotated vector value
@@ -703,6 +804,14 @@ impl RotVector for RMat{
             let f = |mut rvec: ArrayViewMut1::<f64>, ref vec: ArrayView1::<f64>, ref rmat: ArrayView2::<f64>| {
                 ndarray::linalg::general_mat_vec_mul(1.0_f64, rmat, vec, 0.0_f64, &mut rvec);
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), vec in vec.axis_iter(Axis(1)), 
+            rmat in self.ori.axis_iter(Axis(2))) {
+                f(rvec, vec, rmat);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), vec in vec.axis_iter(Axis(1)), 
             rmat in self.ori.axis_iter(Axis(2))) {
                 f(rvec, vec, rmat);
@@ -719,6 +828,13 @@ impl RotVector for RMat{
             let f = |mut rvec: ArrayViewMut1::<f64>, ref rmat: ArrayView2::<f64>| {
                 rvec.assign({&rmat.dot(&vec)});
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+                    f(rvec, rmat);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
                 f(rvec, rmat);
             });
@@ -754,6 +870,13 @@ impl RotVector for RMat{
                 rvec.assign({&rmat.dot(&vec)});
                 vec.assign({&rvec});
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((vec in vec.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
+                f(vec, rmat);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((vec in vec.axis_iter_mut(Axis(1)), rmat in self.ori.axis_iter(Axis(2))) {
                 f(vec, rmat);
             });
@@ -769,6 +892,13 @@ impl RotVector for RMat{
                 rvec.assign({&self.ori.index_axis(Axis(2), 0).dot(&vec)});
                 vec.assign({&rvec});
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((vec in vec.axis_iter_mut(Axis(1))) {
+                f(vec);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((vec in vec.axis_iter_mut(Axis(1))) {
                 f(vec);
             });
@@ -813,6 +943,13 @@ impl RotTensor for RMat{
                 rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
             };
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rtensor in rtensor.axis_iter_mut(Axis(2)), tensor in tensor.axis_iter(Axis(2)), 
+            rmat in self.ori.axis_iter(Axis(2))) {
+                f(rtensor, tensor, rmat);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rtensor in rtensor.axis_iter_mut(Axis(2)), tensor in tensor.axis_iter(Axis(2)), 
             rmat in self.ori.axis_iter(Axis(2))) {
                 f(rtensor, tensor, rmat);
@@ -828,6 +965,12 @@ impl RotTensor for RMat{
                 });
             };
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rtensor in rtensor.axis_iter_mut(Axis(2)), tensor in tensor.axis_iter(Axis(2))) {
+                f(rtensor, tensor);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rtensor in rtensor.axis_iter_mut(Axis(2)), tensor in tensor.axis_iter(Axis(2))) {
                 f(rtensor, tensor);
             });
@@ -875,6 +1018,14 @@ impl RotTensor for RMat{
             let f = |mut rtensor: ArrayViewMut2::<f64>, ref tensor: ArrayView2::<f64>, ref rmat: ArrayView2::<f64>| {
                 rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rtensor in rtensor.axis_iter_mut(Axis(2)), tensor in tensor.axis_iter(Axis(2)), 
+            rmat in self.ori.axis_iter(Axis(2))) {
+                f(rtensor, tensor, rmat);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rtensor in rtensor.axis_iter_mut(Axis(2)), tensor in tensor.axis_iter(Axis(2)), 
             rmat in self.ori.axis_iter(Axis(2))) {
                 f(rtensor, tensor, rmat);
@@ -888,6 +1039,13 @@ impl RotTensor for RMat{
                     &self.ori.index_axis(Axis(2), 0).dot(&tensor.dot(&self.ori.index_axis(Axis(2), 0).t()))
                 });
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rtensor in rtensor.axis_iter_mut(Axis(2)), tensor in tensor.axis_iter(Axis(2))) {
+                f(rtensor, tensor);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rtensor in rtensor.axis_iter_mut(Axis(2)), tensor in tensor.axis_iter(Axis(2))) {
                 f(rtensor, tensor);
             });
@@ -926,6 +1084,13 @@ impl RotTensor for RMat{
                 rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
                 tensor.assign({&rtensor});
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((tensor in tensor.axis_iter_mut(Axis(2)), rmat in self.ori.axis_iter(Axis(2))) {
+                f(tensor, rmat);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((tensor in tensor.axis_iter_mut(Axis(2)), rmat in self.ori.axis_iter(Axis(2))) {
                 f(tensor, rmat);
             });
@@ -939,6 +1104,13 @@ impl RotTensor for RMat{
                 rtensor.assign({&self.ori.index_axis(Axis(2), 0).dot(&tensor.dot(&self.ori.index_axis(Axis(2), 0).t()))});
                 tensor.assign({&rtensor});
             };
+
+            #[cfg(feature = "parallel")]
+            par_azip!((tensor in tensor.axis_iter_mut(Axis(2))) {
+                f(tensor);
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((tensor in tensor.axis_iter_mut(Axis(2))) {
                 f(tensor);
             });

@@ -30,6 +30,10 @@ impl RodVec{
 
         let mut ori = Array2::<f64>::zeros((4, size).f());
 
+        #[cfg(feature = "parallel")]
+        par_azip!((mut rod_vec in ori.axis_iter_mut(Axis(1))) {rod_vec[2] = 1.0_f64});
+
+        #[cfg(not(feature = "parallel"))]
         azip!((mut rod_vec in ori.axis_iter_mut(Axis(1))) {rod_vec[2] = 1.0_f64});
 
         RodVec{
@@ -81,7 +85,13 @@ impl RodVec{
             rod_vec_t[2] = -1.0_f64 * rod_vec[2];
             rod_vec_t[3] = rod_vec[3];
         };
-        
+
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec_t in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec_t, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec_t in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(rod_vec_t, rod_vec);
         });
@@ -99,6 +109,12 @@ impl RodVec{
             rod_vec_t[2] *= -1.0_f64;
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec_t in self.ori.axis_iter_mut(Axis(1))) {
+            f(rod_vec_t);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec_t in self.ori.axis_iter_mut(Axis(1))) {
             f(rod_vec_t);
         });
@@ -144,6 +160,12 @@ impl OriConv for RodVec{
             rmat[[2, 2]] = c + (1.0_f64 - c) * (rod_vec[2] * rod_vec[2]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(rmat, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(rmat, rod_vec);
         });
@@ -166,6 +188,12 @@ impl OriConv for RodVec{
             ang_axis[3] = 2.0_f64 * rod_vec[3].atan();
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, rod_vec);
         });
@@ -187,6 +215,12 @@ impl OriConv for RodVec{
             ang_axis[2] = rod_vec[2] * phi;
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, rod_vec);
         });
@@ -213,6 +247,12 @@ impl OriConv for RodVec{
             rod_vec_comp[2] = rod_vec[2] * rod_vec[3];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec_comp, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(rod_vec_comp, rod_vec);
         });
@@ -238,6 +278,12 @@ impl OriConv for RodVec{
             quat[3] = s * rod_vec[2];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((quat in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(quat, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((quat in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(quat, rod_vec);
         });
@@ -293,6 +339,12 @@ impl OriConv for RodVec{
             rmat[[2, 2]] = c + (1.0_f64 - c) * (rod_vec[2] * rod_vec[2]);
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rmat in ori.axis_iter_mut(Axis(2)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(rmat, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rmat in ori.axis_iter_mut(Axis(2)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(rmat, rod_vec);
         });
@@ -320,6 +372,12 @@ impl OriConv for RodVec{
             ang_axis[3] = 2.0_f64 * rod_vec[3].atan();
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, rod_vec);
         });
@@ -347,6 +405,12 @@ impl OriConv for RodVec{
             ang_axis[2] = rod_vec[2] * phi;
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(ang_axis, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((ang_axis in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(ang_axis, rod_vec);
         });
@@ -388,6 +452,12 @@ impl OriConv for RodVec{
             rod_vec_comp[2] = rod_vec[2] * rod_vec[3];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(rod_vec_comp, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((rod_vec_comp in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(rod_vec_comp, rod_vec);
         });
@@ -419,6 +489,12 @@ impl OriConv for RodVec{
             quat[3] = s * rod_vec[2];
         };
 
+        #[cfg(feature = "parallel")]
+        par_azip!((quat in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
+            f(quat, rod_vec);
+        });
+
+        #[cfg(not(feature = "parallel"))]
         azip!((quat in ori.axis_iter_mut(Axis(1)), rod_vec in self.ori.axis_iter(Axis(1))) {
             f(quat, rod_vec);
         });
@@ -468,6 +544,13 @@ impl RotVector for RodVec{
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref rod_vec in self.ori.axis_iter(Axis(1))) {
+                rod_vec_rot_vec(&rod_vec, &vec, rvec);     
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
             ref rod_vec in self.ori.axis_iter(Axis(1))) {
                 rod_vec_rot_vec(&rod_vec, &vec, rvec);     
@@ -476,6 +559,12 @@ impl RotVector for RodVec{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let rod_vec = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
+                rod_vec_rot_vec(&rod_vec, &vec, rvec); 
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             });
@@ -483,6 +572,12 @@ impl RotVector for RodVec{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let vec = vec.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {  
+                rod_vec_rot_vec(&rod_vec, &vec, rvec); 
+            }); 
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             }); 
@@ -527,6 +622,14 @@ impl RotVector for RodVec{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
+
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
+            ref rod_vec in self.ori.axis_iter(Axis(1))) {
+                rod_vec_rot_vec(&rod_vec, &vec, rvec);    
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1)), 
             ref rod_vec in self.ori.axis_iter(Axis(1))) {
                 rod_vec_rot_vec(&rod_vec, &vec, rvec);    
@@ -535,6 +638,12 @@ impl RotVector for RodVec{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let rod_vec = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
+                rod_vec_rot_vec(&rod_vec, &vec, rvec); 
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref vec in vec.axis_iter(Axis(1))) {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             });
@@ -542,6 +651,12 @@ impl RotVector for RodVec{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let vec = vec.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {  
+                rod_vec_rot_vec(&rod_vec, &vec, rvec); 
+            }); 
+
+            #[cfg(not(feature = "parallel"))]
             azip!((rvec in rvec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {  
                 rod_vec_rot_vec(&rod_vec, &vec, rvec); 
             }); 
@@ -571,6 +686,15 @@ impl RotVector for RodVec{
         if rnelems == nelems {
             //The rotations here can be given by the following set of equations as found on Wikipedia:
             //https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula#Statement
+
+            #[cfg(feature = "parallel")]
+            par_azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
+                let mut rvec = Array1::<f64>::zeros((3).f());
+                rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
+                vec.assign({&rvec});    
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
@@ -580,6 +704,14 @@ impl RotVector for RodVec{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
             let rod_vec = self.ori.index_axis(Axis(1), 0);
 
+            #[cfg(feature = "parallel")]
+            par_azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
+                let mut rvec = Array1::<f64>::zeros((3).f());
+                rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
+                vec.assign({&rvec});  
+            });
+
+            #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
