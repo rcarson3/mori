@@ -691,14 +691,14 @@ impl RotVector for RodVec{
             par_azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
-                vec.assign({&rvec});    
+                vec.assign(&rvec);    
             });
 
             #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref rod_vec in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
-                vec.assign({&rvec});    
+                vec.assign(&rvec);    
             });
         } else{
             //We just have one Rodrigues vector so perform pretty much the above to get all of our values
@@ -708,14 +708,14 @@ impl RotVector for RodVec{
             par_azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
-                vec.assign({&rvec});  
+                vec.assign(&rvec);  
             });
 
             #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 rod_vec_rot_vec(&rod_vec, &vec.view(), rvec.view_mut());
-                vec.assign({&rvec});  
+                vec.assign(&rvec);  
             });
         }//End if-else
     }//End of rot_vector_inplace

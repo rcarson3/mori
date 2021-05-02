@@ -6,7 +6,6 @@ extern crate csv;
 use mori::orientations::*;
 use csv::ReaderBuilder;
 use ndarray::prelude::*;
-use approx::assert_abs_diff_eq;
 
 #[test]
 fn rmat_rot_vec(){
@@ -18,14 +17,14 @@ fn rmat_rot_vec(){
 
     let rvec = rmat.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(vec, rvec, epsilon=1e-14);
+    assert!(vec.abs_diff_eq(&rvec, 1e-14));
 
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
 
     let rvec = rmat.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(vec, rvec, epsilon=1e-14);
+    assert!(vec.abs_diff_eq(&rvec, 1e-14));
 
     //Last case does the rmat has nelems and vec has 1 elem
     let rmat = RMat::new(nori);
@@ -40,7 +39,7 @@ fn rmat_rot_vec(){
 
     let rvec = rmat.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(vec_comp, rvec, epsilon=1e-14);
+    assert!(vec_comp.abs_diff_eq(&rvec, 1e-14));
 }
 
 
@@ -55,7 +54,7 @@ fn rmat_rot_vec_mut(){
 
     rmat.rot_vector_mut(vec.view(), rvec.view_mut());
 
-    assert_abs_diff_eq!(vec, rvec, epsilon=1e-14);
+    assert!(vec.abs_diff_eq(&rvec, 1e-14));
 
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
@@ -64,7 +63,7 @@ fn rmat_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec.view_mut());
 
 
-    assert_abs_diff_eq!(vec, rvec, epsilon=1e-14);
+    assert!(vec.abs_diff_eq(&rvec, 1e-14));
 
     //Last case does the rmat has nelems and vec has 1 elem
     let rmat = RMat::new(nori);
@@ -80,7 +79,7 @@ fn rmat_rot_vec_mut(){
 
     rmat.rot_vector_mut(vec.view(), rvec.view_mut());
 
-    assert_abs_diff_eq!(vec_comp, rvec, epsilon=1e-14);
+    assert!(vec_comp.abs_diff_eq(&rvec, 1e-14));
 }
 
 #[test]
@@ -94,14 +93,14 @@ fn rmat_rot_vec_inplace(){
 
     rmat.rot_vector_inplace(vec.view_mut());
 
-    assert_abs_diff_eq!(vec_comp, vec, epsilon=1e-14);
+    assert!(vec_comp.abs_diff_eq(&vec, 1e-14));
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
     let mut vec = vec_comp.clone();
 
     rmat.rot_vector_inplace(vec.view_mut());
 
-    assert_abs_diff_eq!(vec_comp, vec, epsilon=1e-14);
+    assert!(vec_comp.abs_diff_eq(&vec, 1e-14));
 }
 
 #[test]
@@ -120,7 +119,7 @@ fn quat_rot_vec(){
     let rvec_rmat = rmat.rot_vector(vec.view());
     let rvec_quat = quat.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_quat, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_quat, 1e-14));
 
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
@@ -129,7 +128,7 @@ fn quat_rot_vec(){
     let rvec_rmat = rmat.rot_vector(vec.view());
     let rvec_quat = quat.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_quat, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_quat, 1e-14));
 }
 
 
@@ -151,7 +150,7 @@ fn quat_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     quat.rot_vector_mut(vec.view(), rvec_quat.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_quat, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_quat, 1e-14));
 
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
@@ -163,7 +162,7 @@ fn quat_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     quat.rot_vector_mut(vec.view(), rvec_quat.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_quat, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_quat, 1e-14));
 
     //Last case does the rmat has nelems and vec has 1 elem
     let rmat = RMat::new(nori);
@@ -179,7 +178,7 @@ fn quat_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     quat.rot_vector_mut(vec.view(), rvec_quat.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_quat, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_quat, 1e-14));
 
 }
 
@@ -201,7 +200,7 @@ fn quat_rot_vec_inplace(){
     rmat.rot_vector_inplace(rvec_rmat.view_mut());
     quat.rot_vector_inplace(rvec_quat.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_quat, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_quat, 1e-14));
 
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
@@ -213,7 +212,7 @@ fn quat_rot_vec_inplace(){
     rmat.rot_vector_inplace(rvec_rmat.view_mut());
     quat.rot_vector_inplace(rvec_quat.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_quat, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_quat, 1e-14));
 }
 
 #[test]
@@ -232,7 +231,7 @@ fn angaxis_rot_vec(){
     let rvec_rmat = rmat.rot_vector(vec.view());
     let rvec_angaxis = ang_axis.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_angaxis, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_angaxis, 1e-14));
 
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
@@ -241,7 +240,7 @@ fn angaxis_rot_vec(){
     let rvec_rmat = rmat.rot_vector(vec.view());
     let rvec_angaxis = ang_axis.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_angaxis, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_angaxis, 1e-14));
 
 }
 
@@ -264,7 +263,7 @@ fn angaxis_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     ang_axis.rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_angaxis, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_angaxis, 1e-14));
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
     let ang_axis = AngAxis::new(1);
@@ -275,7 +274,7 @@ fn angaxis_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     ang_axis.rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_angaxis, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_angaxis, 1e-14));
 
     //Last case does the rmat has nelems and vec has 1 elem
     let rmat = RMat::new(nori);
@@ -291,7 +290,7 @@ fn angaxis_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     ang_axis.rot_vector_mut(vec.view(), rvec_angaxis.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_angaxis, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_angaxis, 1e-14));
 }
 
 #[test]
@@ -312,7 +311,7 @@ fn angaxis_rot_vec_inplace(){
     rmat.rot_vector_inplace(rvec_rmat.view_mut());
     ang_axis.rot_vector_inplace(rvec_angaxis.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_angaxis, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_angaxis, 1e-14));
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
     let ang_axis = AngAxis::new(1);
@@ -323,7 +322,7 @@ fn angaxis_rot_vec_inplace(){
     rmat.rot_vector_inplace(rvec_rmat.view_mut());
     ang_axis.rot_vector_inplace(rvec_angaxis.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_angaxis, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_angaxis, 1e-14));
 }
 
 
@@ -342,7 +341,7 @@ fn rodvec_rot_vec(){
     let rvec_rmat = rmat.rot_vector(vec.view());
     let rvec_rodvec = rod.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_rodvec, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_rodvec, 1e-14));
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
     let rod  = RodVec::new(1);
@@ -352,7 +351,7 @@ fn rodvec_rot_vec(){
     let rvec_rmat = rmat.rot_vector(vec.view());
     let rvec_rodvec = rod.rot_vector(vec.view());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_rodvec, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_rodvec, 1e-14));
 }
 
 
@@ -373,7 +372,7 @@ fn rodvec_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     rod.rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_rodvec, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_rodvec, 1e-14));
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
     let rod  = RodVec::new(1);
@@ -383,7 +382,7 @@ fn rodvec_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     rod.rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_rodvec, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_rodvec, 1e-14));
 
     //Last case does the rmat has nelems and vec has 1 elem
     let rmat = RMat::new(nori);
@@ -399,7 +398,7 @@ fn rodvec_rot_vec_mut(){
     rmat.rot_vector_mut(vec.view(), rvec_rmat.view_mut());
     rod_vec.rot_vector_mut(vec.view(), rvec_rodvec.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_rodvec, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_rodvec, 1e-14));
 }
 
 #[test]
@@ -419,7 +418,7 @@ fn rodvec_rot_vec_inplace(){
     rmat.rot_vector_inplace(rvec_rmat.view_mut());
     rod.rot_vector_inplace(rvec_rodvec.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_rodvec, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_rodvec, 1e-14));
     //Second test does the rmat has 1 elem and vec has nelems
     let rmat = RMat::new(1);
     let rod = RodVec::new(1);
@@ -427,7 +426,7 @@ fn rodvec_rot_vec_inplace(){
     rmat.rot_vector_inplace(rvec_rmat.view_mut());
     rod.rot_vector_inplace(rvec_rodvec.view_mut());
 
-    assert_abs_diff_eq!(rvec_rmat, rvec_rodvec, epsilon=1e-14);
+    assert!(rvec_rmat.abs_diff_eq(&rvec_rodvec, 1e-14));
 }
 
 fn read_rod_file() -> Array2<f64>{

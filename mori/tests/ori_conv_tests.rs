@@ -5,7 +5,6 @@ extern crate csv;
 use mori::orientations::*;
 use csv::ReaderBuilder;
 use ndarray::prelude::*;
-use approx::assert_abs_diff_eq;
 
 //All of the below tests use a set of Rodrigues Vector data pulled from a Fundamental
 //Region of cubic crystals located at the origin. It therefore provides a comprehensive
@@ -23,7 +22,7 @@ fn rod2rodcomp(){
 
     let rod_comp_ori2 = rod_comp.ori_view();
 
-    assert_abs_diff_eq!(rod_comp_ori, rod_comp_ori2, epsilon = 1e-14);
+    assert!(rod_comp_ori.abs_diff_eq(&rod_comp_ori2, 1e-14));
 }
 
 #[test]
@@ -63,7 +62,7 @@ fn rod2angaxis2rod(){
     let rod2 = ang_axis.to_rod_vec();
     let rod_ori2 = rod2.ori_view();
 
-    assert_abs_diff_eq!(rod_ori, rod_ori2, epsilon = 1e-14);
+    assert!(rod_ori.abs_diff_eq(&rod_ori2, 1e-14));
 }
 
 #[test]
@@ -77,7 +76,7 @@ fn rod2angaxiscomp2rod(){
     let rod2 = ang_axis_comp.to_rod_vec();
     let rod_ori2 = rod2.ori_view();
 
-    assert_abs_diff_eq!(rod_ori, rod_ori2, epsilon = 1e-14);
+    assert!(rod_ori.abs_diff_eq(&rod_ori2, 1e-14));
 }
 
 
@@ -92,7 +91,7 @@ fn rod2rmat2rod(){
     let rod2 = rmat.to_rod_vec();
     let rod_ori2 = rod2.ori_view();
 
-    assert_abs_diff_eq!(rod_ori, rod_ori2, epsilon = 1e-14);
+    assert!(rod_ori.abs_diff_eq(&rod_ori2, 1e-14));
 }
 
 #[test]
@@ -106,7 +105,7 @@ fn rod2bunge2rod(){
     let rod2 = bunge.to_rod_vec();
     let rod_ori2 = rod2.ori_view();
 
-    assert_abs_diff_eq!(rod_ori, rod_ori2, epsilon = 1e-14);
+    assert!(rod_ori.abs_diff_eq(&rod_ori2, 1e-14));
 }
 
 
@@ -125,7 +124,7 @@ fn rod2bunge2rod_inplace(){
 
     let rod_ori2 = rod2.ori_view();
 
-    assert_abs_diff_eq!(rod_ori, rod_ori2, epsilon = 1e-14);
+    assert!(rod_ori.abs_diff_eq(&rod_ori2, 1e-14));
 }
 
 #[test]
@@ -139,7 +138,7 @@ fn rod2quat2rod(){
     let rod2 = quat.to_rod_vec();
     let rod_ori2 = rod2.ori_view();
 
-    assert_abs_diff_eq!(rod_ori, rod_ori2, epsilon = 1e-14);
+    assert!(rod_ori.abs_diff_eq(&rod_ori2, 1e-14));
 }
 
 #[test]
@@ -156,7 +155,7 @@ fn rmat2bunge2rmat(){
     let rmat_ori = rmat.ori_view();
     let rmat_ori2 = rmat2.ori_view();
 
-    assert_abs_diff_eq!(rmat_ori, rmat_ori2, epsilon = 1e-14);
+    assert!(rmat_ori.abs_diff_eq(&rmat_ori2, 1e-14));
 }
 
 #[test]
@@ -173,7 +172,7 @@ fn rmat2angaxis2rmat(){
     let rmat_ori = rmat.ori_view();
     let rmat_ori2 = rmat2.ori_view();
 
-    assert_abs_diff_eq!(rmat_ori, rmat_ori2, epsilon = 1e-14);
+    assert!(rmat_ori.abs_diff_eq(&rmat_ori2, 1e-14));
 }
 
 #[test]
@@ -190,7 +189,7 @@ fn rmat2angaxiscomp2rmat(){
     let rmat_ori = rmat.ori_view();
     let rmat_ori2 = rmat2.ori_view();
 
-    assert_abs_diff_eq!(rmat_ori, rmat_ori2, epsilon = 1e-14);
+    assert!(rmat_ori.abs_diff_eq(&rmat_ori2, 1e-14));
 }
 
 #[test]
@@ -207,7 +206,7 @@ fn quat2bunge2quat(){
     let quat_ori = quat.ori_view();
     let quat_ori2 = quat2.ori_view();
 
-    assert_abs_diff_eq!(quat_ori, quat_ori2, epsilon = 1e-14);
+    assert!(quat_ori.abs_diff_eq(&quat_ori2, 1e-14));
 }
 
 #[test]
@@ -224,7 +223,7 @@ fn quat2rmat2quat(){
     let quat_ori = quat.ori_view();
     let quat_ori2 = quat2.ori_view();
 
-    assert_abs_diff_eq!(quat_ori, quat_ori2, epsilon = 1e-14);
+    assert!(quat_ori.abs_diff_eq(&quat_ori2, 1e-14));
 }
 
 #[test]
@@ -241,7 +240,7 @@ fn quat2angaxiscomp2quat(){
     let quat_ori = quat.ori_view();
     let quat_ori2 = quat2.ori_view();
 
-    assert_abs_diff_eq!(quat_ori, quat_ori2, epsilon = 1e-14);
+    assert!(quat_ori.abs_diff_eq(&quat_ori2, 1e-14));
 }
 
 #[test]
@@ -258,7 +257,7 @@ fn angaxis2bunge2angaxis(){
     let angaxis_ori = ang_axis.ori_view();
     let angaxis_ori2 = ang_axis2.ori_view();
 
-    assert_abs_diff_eq!(angaxis_ori, angaxis_ori2, epsilon = 1e-14);
+    assert!(angaxis_ori.abs_diff_eq(&angaxis_ori2, 1e-14));
 }
 
 fn read_rod_file() -> Array2<f64>{

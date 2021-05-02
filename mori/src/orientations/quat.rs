@@ -1034,14 +1034,14 @@ impl RotVector for Quat{
             par_azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
-                vec.assign({&rvec});    
+                vec.assign(&rvec);    
             });
 
             #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1)), ref quat in self.ori.axis_iter(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f());
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
-                vec.assign({&rvec});    
+                vec.assign(&rvec);    
             });
         } else{
             //We just have one Quaternion so perform pretty much the above to get all of our values
@@ -1051,14 +1051,14 @@ impl RotVector for Quat{
             par_azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f()); 
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
-                vec.assign({&rvec});  
+                vec.assign(&rvec);  
             });
 
             #[cfg(not(feature = "parallel"))]
             azip!((mut vec in vec.axis_iter_mut(Axis(1))) {
                 let mut rvec = Array1::<f64>::zeros((3).f()); 
                 quat_rot_vec(&quat, &vec.view(), rvec.view_mut());
-                vec.assign({&rvec});  
+                vec.assign(&rvec);  
             });
         }//End of if-else
     }//End of rot_vector_inplace

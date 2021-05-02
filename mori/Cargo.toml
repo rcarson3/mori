@@ -21,7 +21,7 @@ exclude = [
 ]
 
 [dependencies]
-ndarray = {version = "0.13.0", features=["approx"]}
+ndarray = {version = "0.15.1", features=["approx"]}
 [features] 
 parallel = ["ndarray/rayon"]
 [dev-dependencies]

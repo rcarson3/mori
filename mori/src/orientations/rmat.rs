@@ -744,12 +744,12 @@ impl RotVector for RMat{
             //rvec values all at once.
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
-            rvec.assign({&self.ori.index_axis(Axis(2), 0).dot(&vec)});
+            rvec.assign(&self.ori.index_axis(Axis(2), 0).dot(&vec));
         }else{
             //We now need to look at the case where we only have one vector to rotate but several rotation matrices
             let vec = vec.index_axis(Axis(1), 0);
             let f = |mut rvec: ArrayViewMut1::<f64>, ref rmat: ArrayView2::<f64>| {
-                rvec.assign({&rmat.dot(&vec)});
+                rvec.assign(&rmat.dot(&vec));
             };
 
             #[cfg(feature = "parallel")]
@@ -821,12 +821,12 @@ impl RotVector for RMat{
             //rvec values all at once.
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
-            rvec.assign({&self.ori.index_axis(Axis(2), 0).dot(&vec)});
+            rvec.assign(&self.ori.index_axis(Axis(2), 0).dot(&vec));
         }else{
             //We now need to look at the case where we only have one vector to rotate but several rotation matrices
             let vec = vec.index_axis(Axis(1), 0);
             let f = |mut rvec: ArrayViewMut1::<f64>, ref rmat: ArrayView2::<f64>| {
-                rvec.assign({&rmat.dot(&vec)});
+                rvec.assign(&rmat.dot(&vec));
             };
 
             #[cfg(feature = "parallel")]
@@ -867,8 +867,8 @@ impl RotVector for RMat{
             let f = |mut vec: ArrayViewMut1::<f64>, ref rmat: ArrayView2::<f64>| {
                 //A cleaner way needs to exists to perform this operation.
                 let mut rvec = Array1::<f64>::zeros((3).f());
-                rvec.assign({&rmat.dot(&vec)});
-                vec.assign({&rvec});
+                rvec.assign(&rmat.dot(&vec));
+                vec.assign(&rvec);
             };
 
             #[cfg(feature = "parallel")]
@@ -889,8 +889,8 @@ impl RotVector for RMat{
             let f = |mut vec: ArrayViewMut1::<f64>| {
                 //A cleaner way needs to exists to perform this operation.
                 let mut rvec = Array1::<f64>::zeros((3).f());
-                rvec.assign({&self.ori.index_axis(Axis(2), 0).dot(&vec)});
-                vec.assign({&rvec});
+                rvec.assign(&self.ori.index_axis(Axis(2), 0).dot(&vec));
+                vec.assign(&rvec);
             };
 
             #[cfg(feature = "parallel")]
@@ -940,7 +940,7 @@ impl RotTensor for RMat{
             //and assigning R*T*R^T to the rotated tensor.
 
             let f = |mut rtensor: ArrayViewMut2::<f64>, ref tensor: ArrayView2::<f64>, ref rmat: ArrayView2::<f64>| {
-                rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
+                rtensor.assign(&rmat.dot(&tensor.dot(&rmat.t())));
             };
 
             #[cfg(feature = "parallel")]
@@ -960,9 +960,9 @@ impl RotTensor for RMat{
             //to use the dot function
 
             let f = |mut rtensor: ArrayViewMut2::<f64>, ref tensor: ArrayView2::<f64>| {
-                rtensor.assign({
+                rtensor.assign(
                     &self.ori.index_axis(Axis(2), 0).dot(&tensor.dot(&self.ori.index_axis(Axis(2), 0).t()))
-                });
+                );
             };
 
             #[cfg(feature = "parallel")]
@@ -1016,7 +1016,7 @@ impl RotTensor for RMat{
             //Here we're iterating through each tensor, rotation matrix, and rotated tensor value
             //and assigning R*T*R^T to the rotated tensor.
             let f = |mut rtensor: ArrayViewMut2::<f64>, ref tensor: ArrayView2::<f64>, ref rmat: ArrayView2::<f64>| {
-                rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
+                rtensor.assign(&rmat.dot(&tensor.dot(&rmat.t())));
             };
 
             #[cfg(feature = "parallel")]
@@ -1035,9 +1035,9 @@ impl RotTensor for RMat{
             //The subview is necessary because we represent RMat as an Array3 and we need an Array1 or Array2
             //to use the dot function
             let f = |mut rtensor: ArrayViewMut2::<f64>, ref tensor: ArrayView2::<f64>| {
-                rtensor.assign({
+                rtensor.assign(
                     &self.ori.index_axis(Axis(2), 0).dot(&tensor.dot(&self.ori.index_axis(Axis(2), 0).t()))
-                });
+                );
             };
 
             #[cfg(feature = "parallel")]
@@ -1081,8 +1081,8 @@ impl RotTensor for RMat{
             let f = |mut tensor: ArrayViewMut2::<f64>, ref rmat: ArrayView2::<f64>| {
                 //A cleaner way needs to exists to perform this operation.
                 let mut rtensor = Array2::<f64>::zeros((3, 3).f());
-                rtensor.assign({&rmat.dot(&tensor.dot(&rmat.t()))});
-                tensor.assign({&rtensor});
+                rtensor.assign(&rmat.dot(&tensor.dot(&rmat.t())));
+                tensor.assign(&rtensor);
             };
 
             #[cfg(feature = "parallel")]
@@ -1101,8 +1101,8 @@ impl RotTensor for RMat{
             let f = |mut tensor: ArrayViewMut2::<f64>| {
                 //A cleaner way needs to exists to perform this operation.
                 let mut rtensor = Array2::<f64>::zeros((3, 3).f());
-                rtensor.assign({&self.ori.index_axis(Axis(2), 0).dot(&tensor.dot(&self.ori.index_axis(Axis(2), 0).t()))});
-                tensor.assign({&rtensor});
+                rtensor.assign(&self.ori.index_axis(Axis(2), 0).dot(&tensor.dot(&self.ori.index_axis(Axis(2), 0).t())));
+                tensor.assign(&rtensor);
             };
 
             #[cfg(feature = "parallel")]
